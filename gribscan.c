@@ -60,8 +60,8 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
     *pift1 = *pift2 = buf[18] * factor;
     break;
   case 4:
-    *pift1 = buf[19] * factor;
-    *pift2 = buf[18] * factor;
+    *pift1 = buf[18] * factor;
+    *pift2 = buf[19] * factor;
     break;
   default:
     fprintf(stderr, "unsupported time range type %u\n", buf[20]);
