@@ -9,6 +9,20 @@ ui3(const unsigned char *buf)
   return (buf[0] << 16) | (buf[1] << 8) | buf[2];
 }
 
+  inline unsigned
+ui2(const unsigned char *buf)
+{
+  return (buf[0] << 8) | buf[1];
+}
+
+  inline long
+si3(const unsigned char *buf)
+{
+  long r;
+  r = ((buf[0] & 0x7F) << 16) | (buf[1] << 8) | buf[2];
+  return (buf[0] & 0x80) ? -r : r;
+}
+
 #define VLEV_SURF -3
 #define VLEV_MSL -2
 #define VLEV_ERR -1
@@ -70,6 +84,84 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
   return 0;
 }
 
+#define myassert1(test, _plusfmt, val) \
+  if (!(test)) { \
+    fprintf(stderr, "myassert(%s) " _plusfmt "\n", #test, val); \
+    return 3u; \
+  }
+
+#define myassert3(test, _plusfmt, v1, v2, v3) \
+  if (!(test)) { \
+    fprintf(stderr, "myassert(%s) " _plusfmt "\n", #test, v1, v2, v3); \
+    return 3u; \
+  }
+
+  unsigned
+gdscheck(unsigned char *buf, unsigned igrid)
+{
+  const unsigned thinpat[73] = {
+    73, 73, 73, 73, 73, 73, 73, 73, 72, 72,
+    72, 71, 71, 71, 70, 70, 69, 69, 68, 67,
+    67, 66, 65, 65, 64, 63, 62, 61, 60, 60,
+    59, 58, 57, 56, 55, 54, 52, 51, 50, 49,
+    48, 47, 45, 44, 43, 42, 40, 39, 38, 36,
+    35, 33, 32, 30, 29, 28, 26, 25, 23, 22,
+    20, 19, 17, 16, 14, 12, 11,  9,  8,  6,
+    5,  3,  2 };
+  unsigned n, nrows, i;
+  long la1, la2, lo1, lo2;
+  /* common feature */
+  myassert1(buf[3] == 0, "NV=%u", buf[3]);
+  myassert1(buf[5] == 0, "gridtype=%u", buf[5]);
+  nrows = ui2(buf + 8);
+  myassert1(nrows == 73, "%u", nrows);
+  /* igrid-dependent feature */
+  la1 = si3(buf + 10);
+  lo1 = si3(buf + 13);
+  la2 = si3(buf + 17);
+  lo2 = si3(buf + 20);
+  switch (igrid) {
+  case 37: case 38: case 39: case 40:
+    myassert1((la1 == 0), "%lu", la1);
+    myassert1((la2 == 90000), "%lu", la2);
+    for (i = 0; i < 73; i++) {
+      unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
+      myassert3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
+        ncols, i, thinpat[i]);
+    }
+    break;
+  case 41: case 42: case 43: case 44:
+    myassert1((la1 == -90000), "%lu", la1);
+    myassert1((la2 == 0), "%lu", la2);
+    for (i = 0; i < 73; i++) {
+      unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
+      myassert3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
+        ncols, i, thinpat[i]);
+    }
+    break;
+  }
+  switch (igrid) {
+  case 37: case 41:
+    myassert1((lo1 == 330000), "%lu", lo1);
+    myassert1((lo2 == 60000), "%lu", lo2);
+    break;
+  case 38: case 42:
+    myassert1((lo1 == 60000), "%lu", lo1);
+    myassert1((lo2 == 150000), "%lu", lo2);
+    break;
+  case 39: case 43:
+    myassert1((lo1 == 150000), "%lu", lo1);
+    myassert1((lo2 == 240000), "%lu", lo2);
+    break;
+  case 40: case 44:
+    myassert1((lo1 == 240000), "%lu", lo1);
+    myassert1((lo2 == 330000), "%lu", lo2);
+    break;
+  }
+
+  return 0u;
+}
+
   unsigned
 scanmsg(unsigned char *buf, size_t buflen)
 {
@@ -85,12 +177,12 @@ scanmsg(unsigned char *buf, size_t buflen)
   }
   if (buf[pdsofs + 4] != 34) {
     fprintf(stderr, "skip: originating centre %u != 34 (JMA)\n", buf[pdsofs + 4]);
-    return 0;
+    return 1;
   }
   igrid = buf[pdsofs + 6];
   if ((igrid < 37) || (igrid > 44)) {
     fprintf(stderr, "unsupported grid %u out of 37..44\n", igrid);
-    return 0;
+    return 1;
   }
   if (buf[pdsofs + 7] != 0x80) {
     fprintf(stderr, "unsupported flags 0x%zX != 0x80\n", buf[pdsofs + 7]);
@@ -117,6 +209,10 @@ scanmsg(unsigned char *buf, size_t buflen)
     return 1;
   }
   gdslen = ui3(buf + gdsofs);
+  r = gdscheck(buf + gdsofs, igrid);
+  if (r != 0) {
+    return r;
+  }
   bdsofs = gdsofs + gdslen;
   if (bdsofs + 8 > buflen) {
     fprintf(stderr, "BDS @%zu comes beyond EOM %zu\n", bdsofs, buflen);
@@ -127,6 +223,8 @@ scanmsg(unsigned char *buf, size_t buflen)
     fprintf(stderr, "BDS @%zu+%zu goes beyond EOM %zu\n", bdsofs, bdslen, buflen);
     return 1;
   }
+  
+
   if (memcmp(buf + bdsofs + bdslen, "7777", 4) != 0) {
     fprintf(stderr, "magic number '7777' lost\n");
     return 1;
@@ -179,6 +277,7 @@ scandata(const char *fnam)
   unsigned r = 0;
   fp = fopen(fnam, "rb");
   if (fp == NULL) { goto error; }
+  fprintf(stderr, "=== file %s ===\n", fnam);
   /* automaton to find the magic number "GRIB */
   while ((c = getc(fp)) != EOF) {
     switch (state) {
@@ -195,7 +294,7 @@ scandata(const char *fnam)
     case 'I':
       if (c == 'B') {
 	r = gdecode(fp);
-	fprintf(stderr, "%s:%lu: GRIB1 decode %u\n", fnam, lpos, r);
+	fprintf(stderr, "offset %lu: GRIB1 decode %u\n", lpos, r);
 	if (r & ~1) goto klose;
       }
       state = 0;
