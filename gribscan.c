@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
   inline size_t
 ui3(const unsigned char *buf)
@@ -27,13 +28,56 @@ pds2vlev(const unsigned char *buf)
   }
 }
 
+  inline void
+pdsreftime(struct tm *v, const unsigned char *buf)
+{
+  v->tm_year = buf[12] + buf[24] * 100 - 2000;
+  v->tm_mon = buf[13] - 1;
+  v->tm_mday = buf[14];
+  v->tm_hour = buf[15];
+  v->tm_min = buf[16];
+  v->tm_sec = 0;
+  v->tm_isdst = v->tm_wday = v->tm_yday = 0;
+}
+
+  inline int
+pdsftime(int *pift1, int *pift2, const unsigned char *buf)
+{
+  int factor;
+  switch (buf[17]) {
+  case 0:
+    factor = 1;
+    break;
+  case 1:
+    factor = 60;
+    break;
+  default:
+    fprintf(stderr, "unsupported time unit %u\n", buf[17]);
+    return -1;
+  }
+  switch (buf[20]) {
+  case 0:
+    *pift1 = *pift2 = buf[18] * factor;
+    break;
+  case 4:
+    *pift1 = buf[19] * factor;
+    *pift2 = buf[18] * factor;
+    break;
+  default:
+    fprintf(stderr, "unsupported time range type %u\n", buf[20]);
+    return -1;
+  }
+  return 0;
+}
+
   unsigned
 scanmsg(unsigned char *buf, size_t buflen)
 {
   unsigned r = 0;
   size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
   unsigned igrid, ielem;
-  int ilev;
+  int ilev, ift1, ift2;
+  struct tm reftime;
   pdslen = ui3(buf + pdsofs);
   if (pdslen + 8 > buflen) {
     fprintf(stderr, "PDS len=%zu goes beyond EOM %zu\n", pdslen, buflen);
@@ -58,7 +102,14 @@ scanmsg(unsigned char *buf, size_t buflen)
     fprintf(stderr, "unsupported vert level %u\n", buf[pdsofs + 9]);
     return 1;
   }
-  fprintf(stderr, "g%03u e%03u v%05d\n", igrid, ielem, ilev);
+  pdsreftime(&reftime, buf + pdsofs);
+  pdsftime(&ift1, &ift2, buf + pdsofs);
+  {
+    char rtbuf[32];
+    strftime(rtbuf, sizeof rtbuf, "%Y-%m-%dT%H:%MZ", &reftime);
+    fprintf(stderr, "g%03u e%03u v%05d r%s f%d..%d\n", igrid, ielem, ilev, rtbuf,
+      ift1, ift2);
+  }
   /* */
   gdsofs = pdsofs + pdslen;
   if (gdsofs + 8 > buflen) {
