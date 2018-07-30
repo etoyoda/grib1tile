@@ -1,10 +1,52 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
   inline size_t
 ui3(const unsigned char *buf)
 {
   return (buf[0] << 16) | (buf[1] << 8) | buf[2];
+}
+
+  unsigned
+scanmsg(unsigned char *buf, size_t buflen)
+{
+  unsigned r = 0;
+  size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
+  pdslen = ui3(buf + pdsofs);
+  if (pdslen + 8 > buflen) {
+    fprintf(stderr, "PDS len=%zu goes beyond EOM %zu\n", pdslen, buflen);
+    return 1;
+  }
+  if (buf[pdsofs + 4] != 34) {
+    fprintf(stderr, "skip: originating centre %zu != 34 (JMA)\n", buf[pdsofs + 4]);
+    return 0;
+  }
+  if (buf[pdsofs + 7] != 0x80) {
+    fprintf(stderr, "unsupported flags 0x%zX != 0x80\n", buf[pdsofs + 7]);
+    return 1;
+  }
+  gdsofs = pdsofs + pdslen;
+  if (gdsofs + 8 > buflen) {
+    fprintf(stderr, "GDS @%zu comes beyond EOM %zu\n", gdsofs, buflen);
+    return 1;
+  }
+  gdslen = ui3(buf + gdsofs);
+  bdsofs = gdsofs + gdslen;
+  if (bdsofs + 8 > buflen) {
+    fprintf(stderr, "BDS @%zu comes beyond EOM %zu\n", bdsofs, buflen);
+    return 1;
+  }
+  bdslen = ui3(buf + bdsofs);
+  if (bdsofs + bdslen + 4 > buflen) {
+    fprintf(stderr, "BDS @%zu+%zu goes beyond EOM %zu\n", bdsofs, bdslen, buflen);
+    return 1;
+  }
+  if (memcmp(buf + bdsofs + bdslen, "7777", 4) != 0) {
+    fprintf(stderr, "magic number '7777' lost\n");
+    return 1;
+  }
+  return 0;
 }
 
   unsigned
@@ -28,15 +70,13 @@ gdecode(FILE *fp)
   if (msgbuf == NULL) {
     perror("malloc"); r = 1; goto ret;
   }
-#if 0
   memcpy(msgbuf+0, "GRIB", 4);
   memcpy(msgbuf+4, ids, 4);
-#endif
   zr = fread(msgbuf+8, 1, msglen-8, fp);
   if (zr < msglen - 8) {
     fputs("EOF in GRIB", stderr); r = 1; goto freeret;
   }
-  /* ooo */
+  r = scanmsg(msgbuf, msglen);
 freeret:
   free(msgbuf);
   /* end ensure malloc-free */
