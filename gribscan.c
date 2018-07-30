@@ -8,24 +8,58 @@ ui3(const unsigned char *buf)
   return (buf[0] << 16) | (buf[1] << 8) | buf[2];
 }
 
+#define VLEV_SURF -3
+#define VLEV_MSL -2
+#define VLEV_ERR -1
+
+  inline int
+pds2vlev(const unsigned char *buf)
+{
+  switch (buf[9]) {
+  case 1:
+    return VLEV_SURF;
+  case 102:
+    return VLEV_MSL;
+  case 100:
+    return (buf[10] << 8) | buf[11];
+  default:
+    return VLEV_ERR;
+  }
+}
+
   unsigned
 scanmsg(unsigned char *buf, size_t buflen)
 {
   unsigned r = 0;
   size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
+  unsigned igrid, ielem;
+  int ilev;
   pdslen = ui3(buf + pdsofs);
   if (pdslen + 8 > buflen) {
     fprintf(stderr, "PDS len=%zu goes beyond EOM %zu\n", pdslen, buflen);
     return 1;
   }
   if (buf[pdsofs + 4] != 34) {
-    fprintf(stderr, "skip: originating centre %zu != 34 (JMA)\n", buf[pdsofs + 4]);
+    fprintf(stderr, "skip: originating centre %u != 34 (JMA)\n", buf[pdsofs + 4]);
+    return 0;
+  }
+  igrid = buf[pdsofs + 6];
+  if ((igrid < 37) || (igrid > 44)) {
+    fprintf(stderr, "unsupported grid %u out of 37..44\n", igrid);
     return 0;
   }
   if (buf[pdsofs + 7] != 0x80) {
     fprintf(stderr, "unsupported flags 0x%zX != 0x80\n", buf[pdsofs + 7]);
     return 1;
   }
+  ielem = buf[pdsofs + 8];
+  ilev = pds2vlev(buf + pdsofs);
+  if (ilev == VLEV_ERR) {
+    fprintf(stderr, "unsupported vert level %u\n", buf[pdsofs + 9]);
+    return 1;
+  }
+  fprintf(stderr, "g%03u e%03u v%05d\n", igrid, ielem, ilev);
+  /* */
   gdsofs = pdsofs + pdslen;
   if (gdsofs + 8 > buflen) {
     fprintf(stderr, "GDS @%zu comes beyond EOM %zu\n", gdsofs, buflen);
