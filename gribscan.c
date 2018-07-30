@@ -1,10 +1,46 @@
 #include <stdio.h>
+#include <stdlib.h>
+
+  inline size_t
+ui3(const unsigned char *buf)
+{
+  return (buf[0] << 16) | (buf[1] << 8) | buf[2];
+}
 
   unsigned
 gdecode(FILE *fp)
 {
-  unsigned r;
-  r = 1;
+  unsigned r = 0;
+  unsigned char ids[4];
+  size_t zr, msglen;
+  unsigned char *msgbuf;
+  /* section 0 IDS */
+  zr = fread(ids, 1, 4, fp);
+  if (zr < 4) {
+    fputs("EOF in IDS", stderr); r = 1; goto ret;
+  }
+  if (ids[3] != 1u) {
+    fputs("Not GRIB Edition 1", stderr); r = 1; goto ret;
+  }
+  msglen = ui3(ids);
+  /* begin ensure malloc-free */
+  msgbuf = malloc(msglen);
+  if (msgbuf == NULL) {
+    perror("malloc"); r = 1; goto ret;
+  }
+#if 0
+  memcpy(msgbuf+0, "GRIB", 4);
+  memcpy(msgbuf+4, ids, 4);
+#endif
+  zr = fread(msgbuf+8, 1, msglen-8, fp);
+  if (zr < msglen - 8) {
+    fputs("EOF in GRIB", stderr); r = 1; goto freeret;
+  }
+  /* ooo */
+freeret:
+  free(msgbuf);
+  /* end ensure malloc-free */
+ret:
   return r;
 }
 
@@ -34,9 +70,7 @@ scandata(const char *fnam)
     case 'I':
       if (c == 'B') {
 	r = gdecode(fp);
-	if (r != 0) {
-	  fprintf(stderr, "%s:%lu: GRIB1 decode %u\n", fnam, lpos, r);
-	}
+	fprintf(stderr, "%s:%lu: GRIB1 decode %u\n", fnam, lpos, r);
 	if (r & ~1) goto klose;
       }
       state = 0;
