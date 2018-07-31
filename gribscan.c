@@ -20,16 +20,16 @@ ui2(const unsigned char *buf)
 si3(const unsigned char *buf)
 {
   long r;
-  r = ((buf[0] & 0x7F) << 16) | (buf[1] << 8) | buf[2];
-  return (buf[0] & 0x80) ? -r : r;
+  r = ((buf[0] & 0x7Fu) << 16) | (buf[1] << 8) | buf[2];
+  return (buf[0] & 0x80u) ? -r : r;
 }
 
   inline int
 si2(const unsigned char *buf)
 {
   long r;
-  r = ((buf[0] & 0x7F) << 8) | buf[1];
-  return (buf[0] & 0x80) ? -r : r;
+  r = ((buf[0] & 0x7Fu) << 8) | buf[1];
+  return (buf[0] & 0x80u) ? -r : r;
 }
 
   inline float
@@ -39,14 +39,92 @@ mfloat(const unsigned char *buf)
   unsigned long mant;
   float r;
   bsign = buf[0] >> 7;
-  exp = ((int)(buf[0] & 0x7F) - 64) * 4 - 24;
+  exp = ((signed)(buf[0] & 0x7Fu) - 64) * 4 - 24;
   mant = ui3(buf + 1);
   r = ldexpf((float)mant, exp);
   return bsign ? -r : r;
 }
 
-#define VLEV_SURF -3
-#define VLEV_MSL -2
+  inline unsigned
+getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
+{
+  if (nbits == 7u) {
+    switch (bitofs) {
+    case 0: return buf[0] >> 1;
+    case 1: return buf[0] & 0x7Fu;
+    case 2: return (buf[0] << 1) & 0x7Fu | buf[1] >> 7;
+    case 3: return (buf[0] << 2) & 0x7Fu | buf[1] >> 6;
+    case 4: return (buf[0] << 3) & 0x7Fu | buf[1] >> 5;
+    case 5: return (buf[0] << 4) & 0x7Fu | buf[1] >> 4;
+    case 6: return (buf[0] << 5) & 0x7Fu | buf[1] >> 3;
+    case 7: return (buf[0] << 6) & 0x7Fu | buf[1] >> 2;
+    }
+  } else if (nbits == 8u) {
+    switch (bitofs) {
+    case 0: return buf[0];
+    case 1: return (buf[0] << 1) & 0xFFu | buf[1] >> 7;
+    case 2: return (buf[0] << 2) & 0xFFu | buf[1] >> 6;
+    case 3: return (buf[0] << 3) & 0xFFu | buf[1] >> 5;
+    case 4: return (buf[0] << 4) & 0xFFu | buf[1] >> 4;
+    case 5: return (buf[0] << 5) & 0xFFu | buf[1] >> 3;
+    case 6: return (buf[0] << 6) & 0xFFu | buf[1] >> 2;
+    case 7: return (buf[0] << 7) & 0xFFu | buf[1] >> 1;
+    }
+  } else if (nbits == 10u) {
+    switch (bitofs) {
+    case 0: return (buf[0] << 2) & 0x3FFu | buf[1] >> 6;
+    case 1: return (buf[0] << 3) & 0x3FFu | buf[1] >> 5;
+    case 2: return (buf[0] << 4) & 0x3FFu | buf[1] >> 4;
+    case 3: return (buf[0] << 5) & 0x3FFu | buf[1] >> 3;
+    case 4: return (buf[0] << 6) & 0x3FFu | buf[1] >> 2;
+    case 5: return (buf[0] << 7) & 0x3FFu | buf[1] >> 1;
+    case 6: return (buf[0] << 8) & 0x3FFu | buf[1];
+    case 7: return (buf[0] << 9) & 0x3FFu | buf[1] << 1 | buf[2] >> 7;
+    }
+  } else if (nbits == 12u) {
+    switch (bitofs) {
+    case 0: return (buf[0] <<  4) & 0xFFFu | buf[1] >> 4;
+    case 1: return (buf[0] <<  5) & 0xFFFu | buf[1] >> 3;
+    case 2: return (buf[0] <<  6) & 0xFFFu | buf[1] >> 2;
+    case 3: return (buf[0] <<  7) & 0xFFFu | buf[1] >> 1;
+    case 4: return (buf[0] <<  8) & 0xFFFu | buf[1];
+    case 5: return (buf[0] <<  9) & 0xFFFu | buf[1] << 1 | buf[2] >> 7;
+    case 6: return (buf[0] << 10) & 0xFFFu | buf[1] << 2 | buf[2] >> 6;
+    case 7: return (buf[0] << 11) & 0xFFFu | buf[1] << 3 | buf[2] >> 5;
+    }
+  } else {
+    return (buf[0] << (nbits + bitofs - 8u)) & ((1u << nbits) - 1u)
+      | (nbits + bitofs < 16u
+	  ? buf[1] >> (16u - nbits - bitofs)
+	  : buf[1] << (nbits + bitofs - 16u)
+        )
+      | (nbits + bitofs < 24u
+          ? buf[2] >> (24u - nbits - bitofs)
+	  : buf[2] << (nbits + bitofs - 24u)
+	)
+      | buf[3] >> (32u - nbits - bitofs)
+      ;
+  } 
+}
+
+  inline unsigned
+unpackbits(const unsigned char *buf, size_t nbits, size_t pos)
+{
+  size_t byteofs = (nbits * pos) / 8u;
+  size_t bitofs = (nbits * pos) % 8u;
+  return getbits(buf + byteofs, bitofs, nbits);
+}
+
+
+  unsigned
+scanconfig(const char *fnam)
+{
+  
+  return 0;
+}
+
+#define VLEV_SURF 0
+#define VLEV_MSL 0
 #define VLEV_ERR -1
 
   inline int
@@ -143,7 +221,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
   MYASSERT1(gds[3] == 0, "NV=%u", gds[3]);
   MYASSERT1(gds[5] == 0, "gridtype=%u", gds[5]);
   nrows = ui2(gds + 8);
-  MYASSERT1(nrows == 73, "%u", nrows);
+  MYASSERT1(nrows == 73u, "%u", nrows);
   /* igrid-dependent feature */
   la1 = si3(gds + 10);
   lo1 = si3(gds + 13);
@@ -155,7 +233,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
     MYASSERT1((la2 == 90000), "%lu", la2);
     for (i = 0; i < 73; i++) {
       unsigned ncols = ui2(gds + gds[4] + i * 2 - 1);
-      MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
+      MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpatN[%u]=%u",
         ncols, i, thinpat[i]);
     }
     break;
@@ -164,8 +242,8 @@ gdscheck(unsigned char *gds, unsigned igrid)
     MYASSERT1((la2 == 0), "%lu", la2);
     for (i = 0; i < 73; i++) {
       unsigned ncols = ui2(gds + gds[4] + i * 2 - 1);
-      MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
-        ncols, i, thinpat[i]);
+      MYASSERT3((ncols == thinpat[72-i]), "ncols=%u thinpatS[%u]=%u",
+        ncols, i, thinpat[72-i]);
     }
     break;
   }
@@ -191,6 +269,15 @@ gdscheck(unsigned char *gds, unsigned igrid)
   return 0u;
 }
 
+#define NPTS_MSG 3447
+#define NPTS_PLANE 26704
+
+#define WEAK_ASSERT1(test, _plusfmt, val) \
+  if (!(test)) { \
+    fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
+    return 1u; \
+  }
+
   unsigned
 bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned iparm,
   int d_scale)
@@ -198,19 +285,23 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   int e_scale = si2(bds + 4);
   float refval = mfloat(bds + 6);
   unsigned depth = bds[10];
+  unsigned blankbits = bds[3] & 0xFu;
   double dfactor = pow(10.0, -d_scale);
   float maxval = refval + ((1 << depth) - 1) * ldexpf(1.0f, e_scale);
+  int i, j;
   if (iparm == 2) { dfactor *= 0.01; };
   fprintf(stderr, "pa%03u Es%03d dp%03u min%-9.6g max%-9.6g\n",
     iparm, e_scale, depth, refval * dfactor, maxval * dfactor);
+  MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
+    "depth=%zu blankbits=%zu buflen=%zu", depth, blankbits, buflen);
+  for (i = 0; i < NPTS_MSG; i++) {
+    unsigned y;
+    y = unpackbits(bds + 11u, depth, i);
+    fprintf(stderr, " %u", y);
+  }
+  fprintf(stderr, "\n");
   return 0;
 }
-
-#define WEAK_ASSERT1(test, _plusfmt, val) \
-  if (!(test)) { \
-    fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
-    return 1u; \
-  }
 
   unsigned
 scanmsg(unsigned char *buf, size_t buflen, const char *locator)
@@ -226,7 +317,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   WEAK_ASSERT1((buf[pdsofs + 4] == 34), "origcenter=%u", buf[pdsofs + 4]);
   igrid = buf[pdsofs + 6];
   WEAK_ASSERT1((igrid >= 37) && (igrid <= 44), "gridtype=%u", igrid);
-  WEAK_ASSERT1((buf[pdsofs + 7] == 0x80), "flags=%#X", buf[pdsofs + 7]);
+  WEAK_ASSERT1((buf[pdsofs + 7] == 0x80u), "flags=%#X", buf[pdsofs + 7]);
   iparm = buf[pdsofs + 8];
   ilev = pds2vlev(buf + pdsofs);
   if (ilev == VLEV_ERR) {
@@ -342,12 +433,6 @@ klose:
 error:
   perror(fnam);
   return 2;
-}
-
-  unsigned
-scanconfig(const char *fnam)
-{
-  return 0;
 }
 
   int
