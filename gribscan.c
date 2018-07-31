@@ -4,19 +4,19 @@
 #include <time.h>
 #include <math.h>
 
-  inline size_t
+  size_t
 ui3(const unsigned char *buf)
 {
   return (buf[0] << 16) | (buf[1] << 8) | buf[2];
 }
 
-  inline unsigned
+  unsigned
 ui2(const unsigned char *buf)
 {
   return (buf[0] << 8) | buf[1];
 }
 
-  inline long
+  long
 si3(const unsigned char *buf)
 {
   long r;
@@ -24,7 +24,7 @@ si3(const unsigned char *buf)
   return (buf[0] & 0x80u) ? -r : r;
 }
 
-  inline int
+  int
 si2(const unsigned char *buf)
 {
   long r;
@@ -32,7 +32,7 @@ si2(const unsigned char *buf)
   return (buf[0] & 0x80u) ? -r : r;
 }
 
-  inline float
+  float
 mfloat(const unsigned char *buf)
 {
   unsigned bsign, exp;
@@ -45,7 +45,7 @@ mfloat(const unsigned char *buf)
   return bsign ? -r : r;
 }
 
-  inline unsigned
+  unsigned
 getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
 {
   if (nbits == 7u) {
@@ -107,7 +107,7 @@ getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
   } 
 }
 
-  inline unsigned
+  unsigned
 unpackbits(const unsigned char *buf, size_t nbits, size_t pos)
 {
   size_t byteofs = (nbits * pos) / 8u;
@@ -115,6 +115,12 @@ unpackbits(const unsigned char *buf, size_t nbits, size_t pos)
   return getbits(buf + byteofs, bitofs, nbits);
 }
 
+/* --- memory layout ---
+ * dcdbuf array := n_ftime x (layers data)
+ * layers data := 
+ */
+
+unsigned *dcdbuf = NULL;
 
   unsigned
 scanconfig(const char *fnam)
@@ -127,7 +133,7 @@ scanconfig(const char *fnam)
 #define VLEV_MSL 0
 #define VLEV_ERR -1
 
-  inline int
+  int
 pds2vlev(const unsigned char *buf)
 {
   switch (buf[9]) {
@@ -142,7 +148,7 @@ pds2vlev(const unsigned char *buf)
   }
 }
 
-  inline void
+  void
 pdsreftime(struct tm *v, const unsigned char *buf)
 {
   v->tm_year = buf[12] + buf[24] * 100 - 2000;
@@ -161,7 +167,7 @@ showtime(char *buf, size_t size, const struct tm *t)
     return buf;
 }
 
-  inline int
+  int
 pdsftime(int *pift1, int *pift2, const unsigned char *buf)
 {
   int factor;
@@ -293,7 +299,7 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   fprintf(stderr, "pa%03u Es%03d dp%03u min%-9.6g max%-9.6g\n",
     iparm, e_scale, depth, refval * dfactor, maxval * dfactor);
   MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
-    "depth=%zu blankbits=%zu buflen=%zu", depth, blankbits, buflen);
+    "depth=%u blankbits=%u buflen=%zu", depth, blankbits, buflen);
   for (i = 0; i < NPTS_MSG; i++) {
     unsigned y;
     y = unpackbits(bds + 11u, depth, i);
@@ -414,7 +420,7 @@ scandata(const char *fnam)
     case 'I':
       if (c == 'B') {
         char locator[32];
-	snprintf(locator, sizeof locator, "%-0.24s:%lu",
+	snprintf(locator, sizeof locator, "%-.24s:%lu",
 	  fnam + ((strlen(fnam) > 24) ? (strlen(fnam) - 24) : 0), lpos);
 	r = gdecode(fp, locator);
 	if (r != 0) {
