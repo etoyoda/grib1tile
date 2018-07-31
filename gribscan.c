@@ -169,6 +169,12 @@ gdscheck(unsigned char *buf, unsigned igrid)
   return 0u;
 }
 
+  unsigned
+bdsdecode(const unsigned char *buf, size_t buflen, unsigned igrid)
+{
+  return 0;
+}
+
 #define WEAK_ASSERT1(test, _plusfmt, val) \
   if (!(test)) { \
     fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
@@ -198,8 +204,8 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   }
   pdsreftime(&reftime, buf + pdsofs);
   pdsftime(&ift1, &ift2, buf + pdsofs);
-  fprintf(stderr, "%s: g%03u e%03u v%05d r%s f%d..%d\n", locator,
-    igrid, ielem, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1, ift2);
+  fprintf(stderr, "%s: g%03u e%03u v%04d r%s f%03d..%03d\n", locator,
+    igrid, ielem, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1/60, ift2/60);
   /* */
   gdsofs = pdsofs + pdslen;
   MYASSERT1((gdsofs + 8 < buflen), "gdsofs=%zu", gdsofs);
@@ -215,9 +221,11 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   MYASSERT3((bdsofs + bdslen + 4 <= buflen), "bdsofs=%zu, bdslen=%zu, buflen=%zu",
     bdsofs, bdslen, buflen);
   MYASSERT1(memcmp(buf + bdsofs + bdslen, "7777", 4) == 0, "endpos=%zu", bdsofs + bdslen);
-  return 0;
+  r = bdsdecode(buf + bdsofs, bdslen, igrid);
+  return r;
 }
 
+/* returns: 0=okay, 1=just warning, 2-or-more=stop */
   unsigned
 gdecode(FILE *fp, const char *locator)
 {
@@ -229,30 +237,30 @@ gdecode(FILE *fp, const char *locator)
   zr = fread(ids, 1, 4, fp);
   if (zr < 4) {
     fputs("EOF in IDS", stderr);
-    return 1u;
+    return 3u;
   }
   if (ids[3] != 1u) {
     fputs("Not GRIB Edition 1", stderr);
     return 1u;
   }
   msglen = ui3(ids);
-  /* begin ensure malloc-free */
   msgbuf = malloc(msglen);
   if (msgbuf == NULL) {
     perror("malloc");
     return 1u;
   }
+  /* --- begin ensure malloc-free --- */
   memcpy(msgbuf+0, "GRIB", 4);
   memcpy(msgbuf+4, ids, 4);
   zr = fread(msgbuf+8, 1, msglen-8, fp);
   if (zr < msglen - 8) {
     fputs("EOF in GRIB", stderr);
-    r = 1; goto freeret;
+    r = 1; goto free_and_return;
   }
   r = scanmsg(msgbuf, msglen, locator);
-freeret:
+free_and_return:
   free(msgbuf);
-  /* end ensure malloc-free */
+  /* --- end ensure malloc-free --- */
   return r;
 }
 
@@ -289,6 +297,7 @@ scandata(const char *fnam)
 	if (r != 0) {
 	  fprintf(stderr, "%s: GRIB1 decode %u\n", locator, r);
 	}
+	/* return code 1 is just warning, but 2 or more stops reading of the file */
 	if (r & ~1) goto klose;
       }
       state = 0;
