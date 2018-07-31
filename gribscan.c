@@ -163,7 +163,7 @@ gdscheck(unsigned char *buf, unsigned igrid)
 }
 
   unsigned
-scanmsg(unsigned char *buf, size_t buflen)
+scanmsg(unsigned char *buf, size_t buflen, const char *locator)
 {
   unsigned r = 0;
   size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
@@ -199,8 +199,8 @@ scanmsg(unsigned char *buf, size_t buflen)
   {
     char rtbuf[32];
     strftime(rtbuf, sizeof rtbuf, "%Y-%m-%dT%H:%MZ", &reftime);
-    fprintf(stderr, "g%03u e%03u v%05d r%s f%d..%d\n", igrid, ielem, ilev, rtbuf,
-      ift1, ift2);
+    fprintf(stderr, "%s: g%03u e%03u v%05d r%s f%d..%d\n", locator,
+      igrid, ielem, ilev, rtbuf, ift1, ift2);
   }
   /* */
   gdsofs = pdsofs + pdslen;
@@ -233,7 +233,7 @@ scanmsg(unsigned char *buf, size_t buflen)
 }
 
   unsigned
-gdecode(FILE *fp)
+gdecode(FILE *fp, const char *locator)
 {
   unsigned r = 0;
   unsigned char ids[4];
@@ -242,28 +242,31 @@ gdecode(FILE *fp)
   /* section 0 IDS */
   zr = fread(ids, 1, 4, fp);
   if (zr < 4) {
-    fputs("EOF in IDS", stderr); r = 1; goto ret;
+    fputs("EOF in IDS", stderr);
+    return 1u;
   }
   if (ids[3] != 1u) {
-    fputs("Not GRIB Edition 1", stderr); r = 1; goto ret;
+    fputs("Not GRIB Edition 1", stderr);
+    return 1u;
   }
   msglen = ui3(ids);
   /* begin ensure malloc-free */
   msgbuf = malloc(msglen);
   if (msgbuf == NULL) {
-    perror("malloc"); r = 1; goto ret;
+    perror("malloc");
+    return 1u;
   }
   memcpy(msgbuf+0, "GRIB", 4);
   memcpy(msgbuf+4, ids, 4);
   zr = fread(msgbuf+8, 1, msglen-8, fp);
   if (zr < msglen - 8) {
-    fputs("EOF in GRIB", stderr); r = 1; goto freeret;
+    fputs("EOF in GRIB", stderr);
+    r = 1; goto freeret;
   }
-  r = scanmsg(msgbuf, msglen);
+  r = scanmsg(msgbuf, msglen, locator);
 freeret:
   free(msgbuf);
   /* end ensure malloc-free */
-ret:
   return r;
 }
 
@@ -293,8 +296,13 @@ scandata(const char *fnam)
       break;
     case 'I':
       if (c == 'B') {
-	r = gdecode(fp);
-	fprintf(stderr, "offset %lu: GRIB1 decode %u\n", lpos, r);
+        char locator[32];
+	snprintf(locator, sizeof locator, "%-0.24s:%lu",
+	  fnam + ((strlen(fnam) > 24) ? (strlen(fnam) - 24) : 0), lpos);
+	r = gdecode(fp, locator);
+	if (r != 0) {
+	  fprintf(stderr, "%s: GRIB1 decode %u\n", locator, r);
+	}
 	if (r & ~1) goto klose;
       }
       state = 0;
