@@ -54,6 +54,13 @@ pdsreftime(struct tm *v, const unsigned char *buf)
   v->tm_isdst = v->tm_wday = v->tm_yday = 0;
 }
 
+  const char *
+showtime(char *buf, size_t size, const struct tm *t)
+{
+    strftime(buf, size, "%Y-%m-%dT%H:%MZ", t);
+    return buf;
+}
+
   inline int
 pdsftime(int *pift1, int *pift2, const unsigned char *buf)
 {
@@ -84,15 +91,15 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
   return 0;
 }
 
-#define myassert1(test, _plusfmt, val) \
+#define MYASSERT1(test, _plusfmt, val) \
   if (!(test)) { \
-    fprintf(stderr, "myassert(%s) " _plusfmt "\n", #test, val); \
+    fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
     return 3u; \
   }
 
-#define myassert3(test, _plusfmt, v1, v2, v3) \
+#define MYASSERT3(test, _plusfmt, v1, v2, v3) \
   if (!(test)) { \
-    fprintf(stderr, "myassert(%s) " _plusfmt "\n", #test, v1, v2, v3); \
+    fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, v1, v2, v3); \
     return 3u; \
   }
 
@@ -111,10 +118,10 @@ gdscheck(unsigned char *buf, unsigned igrid)
   unsigned n, nrows, i;
   long la1, la2, lo1, lo2;
   /* common feature */
-  myassert1(buf[3] == 0, "NV=%u", buf[3]);
-  myassert1(buf[5] == 0, "gridtype=%u", buf[5]);
+  MYASSERT1(buf[3] == 0, "NV=%u", buf[3]);
+  MYASSERT1(buf[5] == 0, "gridtype=%u", buf[5]);
   nrows = ui2(buf + 8);
-  myassert1(nrows == 73, "%u", nrows);
+  MYASSERT1(nrows == 73, "%u", nrows);
   /* igrid-dependent feature */
   la1 = si3(buf + 10);
   lo1 = si3(buf + 13);
@@ -122,45 +129,51 @@ gdscheck(unsigned char *buf, unsigned igrid)
   lo2 = si3(buf + 20);
   switch (igrid) {
   case 37: case 38: case 39: case 40:
-    myassert1((la1 == 0), "%lu", la1);
-    myassert1((la2 == 90000), "%lu", la2);
+    MYASSERT1((la1 == 0), "%lu", la1);
+    MYASSERT1((la2 == 90000), "%lu", la2);
     for (i = 0; i < 73; i++) {
       unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
-      myassert3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
+      MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
         ncols, i, thinpat[i]);
     }
     break;
   case 41: case 42: case 43: case 44:
-    myassert1((la1 == -90000), "%lu", la1);
-    myassert1((la2 == 0), "%lu", la2);
+    MYASSERT1((la1 == -90000), "%lu", la1);
+    MYASSERT1((la2 == 0), "%lu", la2);
     for (i = 0; i < 73; i++) {
       unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
-      myassert3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
+      MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
         ncols, i, thinpat[i]);
     }
     break;
   }
   switch (igrid) {
   case 37: case 41:
-    myassert1((lo1 == 330000), "%lu", lo1);
-    myassert1((lo2 == 60000), "%lu", lo2);
+    MYASSERT1((lo1 == 330000), "%lu", lo1);
+    MYASSERT1((lo2 == 60000), "%lu", lo2);
     break;
   case 38: case 42:
-    myassert1((lo1 == 60000), "%lu", lo1);
-    myassert1((lo2 == 150000), "%lu", lo2);
+    MYASSERT1((lo1 == 60000), "%lu", lo1);
+    MYASSERT1((lo2 == 150000), "%lu", lo2);
     break;
   case 39: case 43:
-    myassert1((lo1 == 150000), "%lu", lo1);
-    myassert1((lo2 == 240000), "%lu", lo2);
+    MYASSERT1((lo1 == 150000), "%lu", lo1);
+    MYASSERT1((lo2 == 240000), "%lu", lo2);
     break;
   case 40: case 44:
-    myassert1((lo1 == 240000), "%lu", lo1);
-    myassert1((lo2 == 330000), "%lu", lo2);
+    MYASSERT1((lo1 == 240000), "%lu", lo1);
+    MYASSERT1((lo2 == 330000), "%lu", lo2);
     break;
   }
 
   return 0u;
 }
+
+#define WEAK_ASSERT1(test, _plusfmt, val) \
+  if (!(test)) { \
+    fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
+    return 1u; \
+  }
 
   unsigned
 scanmsg(unsigned char *buf, size_t buflen, const char *locator)
@@ -170,24 +183,13 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   unsigned igrid, ielem;
   int ilev, ift1, ift2;
   struct tm reftime;
+  char rtbuf[32];
   pdslen = ui3(buf + pdsofs);
-  if (pdslen + 8 > buflen) {
-    fprintf(stderr, "PDS len=%zu goes beyond EOM %zu\n", pdslen, buflen);
-    return 1;
-  }
-  if (buf[pdsofs + 4] != 34) {
-    fprintf(stderr, "skip: originating centre %u != 34 (JMA)\n", buf[pdsofs + 4]);
-    return 1;
-  }
+  MYASSERT1((pdslen + 8 < buflen), "pdslen=%zu", pdslen);
+  WEAK_ASSERT1((buf[pdsofs + 4] == 34), "origcenter=%u", buf[pdsofs + 4]);
   igrid = buf[pdsofs + 6];
-  if ((igrid < 37) || (igrid > 44)) {
-    fprintf(stderr, "unsupported grid %u out of 37..44\n", igrid);
-    return 1;
-  }
-  if (buf[pdsofs + 7] != 0x80) {
-    fprintf(stderr, "unsupported flags 0x%zX != 0x80\n", buf[pdsofs + 7]);
-    return 1;
-  }
+  WEAK_ASSERT1((igrid >= 37) && (igrid <= 44), "gridtype=%u", igrid);
+  WEAK_ASSERT1((buf[pdsofs + 7] == 0x80), "flags=%#X", buf[pdsofs + 7]);
   ielem = buf[pdsofs + 8];
   ilev = pds2vlev(buf + pdsofs);
   if (ilev == VLEV_ERR) {
@@ -196,39 +198,23 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   }
   pdsreftime(&reftime, buf + pdsofs);
   pdsftime(&ift1, &ift2, buf + pdsofs);
-  {
-    char rtbuf[32];
-    strftime(rtbuf, sizeof rtbuf, "%Y-%m-%dT%H:%MZ", &reftime);
-    fprintf(stderr, "%s: g%03u e%03u v%05d r%s f%d..%d\n", locator,
-      igrid, ielem, ilev, rtbuf, ift1, ift2);
-  }
+  fprintf(stderr, "%s: g%03u e%03u v%05d r%s f%d..%d\n", locator,
+    igrid, ielem, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1, ift2);
   /* */
   gdsofs = pdsofs + pdslen;
-  if (gdsofs + 8 > buflen) {
-    fprintf(stderr, "GDS @%zu comes beyond EOM %zu\n", gdsofs, buflen);
-    return 1;
-  }
+  MYASSERT1((gdsofs + 8 < buflen), "gdsofs=%zu", gdsofs);
   gdslen = ui3(buf + gdsofs);
+  /* may return 1 */
   r = gdscheck(buf + gdsofs, igrid);
   if (r != 0) {
     return r;
   }
   bdsofs = gdsofs + gdslen;
-  if (bdsofs + 8 > buflen) {
-    fprintf(stderr, "BDS @%zu comes beyond EOM %zu\n", bdsofs, buflen);
-    return 1;
-  }
+  MYASSERT1((bdsofs + 8 < buflen), "bdspos=%zu", bdsofs);
   bdslen = ui3(buf + bdsofs);
-  if (bdsofs + bdslen + 4 > buflen) {
-    fprintf(stderr, "BDS @%zu+%zu goes beyond EOM %zu\n", bdsofs, bdslen, buflen);
-    return 1;
-  }
-  
-
-  if (memcmp(buf + bdsofs + bdslen, "7777", 4) != 0) {
-    fprintf(stderr, "magic number '7777' lost\n");
-    return 1;
-  }
+  MYASSERT3((bdsofs + bdslen + 4 <= buflen), "bdsofs=%zu, bdslen=%zu, buflen=%zu",
+    bdsofs, bdslen, buflen);
+  MYASSERT1(memcmp(buf + bdsofs + bdslen, "7777", 4) == 0, "endpos=%zu", bdsofs + bdslen);
   return 0;
 }
 
