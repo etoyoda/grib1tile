@@ -28,7 +28,7 @@ GRIB第１版電文が複数書かれたファイルを読み込んで地理院�
 格子構造のメモとしてダンプを末尾に添付する。
 
 
-
+```
 > File A_HPIA89RJTD290000_C_RJTD_20180729033949_89.grib
 > IDS001: 47524942       "GRIB"            Magick number "GRIB"
 > IDS005: 00136A         4970              Total length of GRIB message
@@ -179,3 +179,4 @@ GRIB第１版電文が複数書かれたファイルを読み込んで地理院�
 > BDS007: 44255E00                 9566    Reference value
 > BDS011: 0B             11                Number of bits containing each packed
 >                                          data
+```
