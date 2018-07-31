@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
   inline size_t
 ui3(const unsigned char *buf)
@@ -21,6 +22,27 @@ si3(const unsigned char *buf)
   long r;
   r = ((buf[0] & 0x7F) << 16) | (buf[1] << 8) | buf[2];
   return (buf[0] & 0x80) ? -r : r;
+}
+
+  inline int
+si2(const unsigned char *buf)
+{
+  long r;
+  r = ((buf[0] & 0x7F) << 8) | buf[1];
+  return (buf[0] & 0x80) ? -r : r;
+}
+
+  inline float
+mfloat(const unsigned char *buf)
+{
+  unsigned bsign, exp;
+  unsigned long mant;
+  float r;
+  bsign = buf[0] >> 7;
+  exp = ((int)(buf[0] & 0x7F) - 64) * 4 - 24;
+  mant = ui3(buf + 1);
+  r = ldexpf((float)mant, exp);
+  return bsign ? -r : r;
 }
 
 #define VLEV_SURF -3
@@ -104,7 +126,7 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
   }
 
   unsigned
-gdscheck(unsigned char *buf, unsigned igrid)
+gdscheck(unsigned char *gds, unsigned igrid)
 {
   const unsigned thinpat[73] = {
     73, 73, 73, 73, 73, 73, 73, 73, 72, 72,
@@ -118,21 +140,21 @@ gdscheck(unsigned char *buf, unsigned igrid)
   unsigned n, nrows, i;
   long la1, la2, lo1, lo2;
   /* common feature */
-  MYASSERT1(buf[3] == 0, "NV=%u", buf[3]);
-  MYASSERT1(buf[5] == 0, "gridtype=%u", buf[5]);
-  nrows = ui2(buf + 8);
+  MYASSERT1(gds[3] == 0, "NV=%u", gds[3]);
+  MYASSERT1(gds[5] == 0, "gridtype=%u", gds[5]);
+  nrows = ui2(gds + 8);
   MYASSERT1(nrows == 73, "%u", nrows);
   /* igrid-dependent feature */
-  la1 = si3(buf + 10);
-  lo1 = si3(buf + 13);
-  la2 = si3(buf + 17);
-  lo2 = si3(buf + 20);
+  la1 = si3(gds + 10);
+  lo1 = si3(gds + 13);
+  la2 = si3(gds + 17);
+  lo2 = si3(gds + 20);
   switch (igrid) {
   case 37: case 38: case 39: case 40:
     MYASSERT1((la1 == 0), "%lu", la1);
     MYASSERT1((la2 == 90000), "%lu", la2);
     for (i = 0; i < 73; i++) {
-      unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
+      unsigned ncols = ui2(gds + gds[4] + i * 2 - 1);
       MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
         ncols, i, thinpat[i]);
     }
@@ -141,7 +163,7 @@ gdscheck(unsigned char *buf, unsigned igrid)
     MYASSERT1((la1 == -90000), "%lu", la1);
     MYASSERT1((la2 == 0), "%lu", la2);
     for (i = 0; i < 73; i++) {
-      unsigned ncols = ui2(buf + buf[4] + i * 2 - 1);
+      unsigned ncols = ui2(gds + gds[4] + i * 2 - 1);
       MYASSERT3((ncols == thinpat[i]), "ncols=%u thinpat[%u]=%u",
         ncols, i, thinpat[i]);
     }
@@ -170,8 +192,17 @@ gdscheck(unsigned char *buf, unsigned igrid)
 }
 
   unsigned
-bdsdecode(const unsigned char *buf, size_t buflen, unsigned igrid)
+bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned iparm,
+  int d_scale)
 {
+  int e_scale = si2(bds + 4);
+  float refval = mfloat(bds + 6);
+  unsigned depth = bds[10];
+  double dfactor = pow(10.0, -d_scale);
+  float maxval = refval + ((1 << depth) - 1) * ldexpf(1.0f, e_scale);
+  if (iparm == 2) { dfactor *= 0.01; };
+  fprintf(stderr, "pa%03u Es%03d dp%03u min%-9.6g max%-9.6g\n",
+    iparm, e_scale, depth, refval * dfactor, maxval * dfactor);
   return 0;
 }
 
@@ -186,8 +217,8 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
 {
   unsigned r = 0;
   size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
-  unsigned igrid, ielem;
-  int ilev, ift1, ift2;
+  unsigned igrid, iparm;
+  int ilev, ift1, ift2, d_scale;
   struct tm reftime;
   char rtbuf[32];
   pdslen = ui3(buf + pdsofs);
@@ -196,7 +227,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   igrid = buf[pdsofs + 6];
   WEAK_ASSERT1((igrid >= 37) && (igrid <= 44), "gridtype=%u", igrid);
   WEAK_ASSERT1((buf[pdsofs + 7] == 0x80), "flags=%#X", buf[pdsofs + 7]);
-  ielem = buf[pdsofs + 8];
+  iparm = buf[pdsofs + 8];
   ilev = pds2vlev(buf + pdsofs);
   if (ilev == VLEV_ERR) {
     fprintf(stderr, "unsupported vert level %u\n", buf[pdsofs + 9]);
@@ -204,8 +235,9 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   }
   pdsreftime(&reftime, buf + pdsofs);
   pdsftime(&ift1, &ift2, buf + pdsofs);
-  fprintf(stderr, "%s: g%03u e%03u v%04d r%s f%03d..%03d\n", locator,
-    igrid, ielem, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1/60, ift2/60);
+  d_scale = si2(buf + pdsofs + 26);
+  fprintf(stderr, "%s: g%03u p%03u v%04d r%s f%03d..%03d\n", locator,
+    igrid, iparm, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1/60, ift2/60);
   /* */
   gdsofs = pdsofs + pdslen;
   MYASSERT1((gdsofs + 8 < buflen), "gdsofs=%zu", gdsofs);
@@ -221,7 +253,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   MYASSERT3((bdsofs + bdslen + 4 <= buflen), "bdsofs=%zu, bdslen=%zu, buflen=%zu",
     bdsofs, bdslen, buflen);
   MYASSERT1(memcmp(buf + bdsofs + bdslen, "7777", 4) == 0, "endpos=%zu", bdsofs + bdslen);
-  r = bdsdecode(buf + bdsofs, bdslen, igrid);
+  r = bdsdecode(buf + bdsofs, bdslen, igrid, iparm, d_scale);
   return r;
 }
 

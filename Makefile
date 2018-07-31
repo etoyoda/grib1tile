@@ -1,5 +1,5 @@
 OBJS=gribscan.o
-LIBS=
+LIBS= -lm
 LFLAGS= -g
 CFLAGS= -g --pedantic
 CC=cc
