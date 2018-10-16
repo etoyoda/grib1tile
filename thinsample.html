@@ -37,7 +37,7 @@ function init() {
   });
   var mymap = L.map('mapid', {
     center: [36.0, 135.0],
-    zoom: 4,
+    zoom: 5,
     layers: [tile2]
   });
   var basemaps = {
@@ -61,8 +61,16 @@ function init() {
 
 function fileloaded(mapctx, xhr)
 {
+  console.log('fileloaded')
   var data = JSON.parse(xhr.responseText);
-  var ly = L.geoJSON(data);
+  console.log('parsed')
+  var ly = L.layerGroup();
+  for (idx in data.features) {
+    let c = data.features[idx].geometry.coordinates;
+    console.log(String(c));
+    let pt = L.marker([c[1], c[0]]);
+    pt.addTo(ly);
+  }
   ly.addTo(mapctx.map);
   mapctx.ly.addOverlay(ly, tl);
 }
