@@ -1,0 +1,75 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>thinned grid sample</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+   integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+   crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+   integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+   crossorigin=""></script>
+<style>
+html { margin:0; padding:0; }
+body { margin:0; padding:0; }
+div#mapid { width: 100%; height: 100%; }
+</style>
+<script type="text/javascript">
+function init() {
+  //var canv = document.getElementById('mapid');
+  // canv.style.csstext = 'height: ' + window.innerHeight + ';';
+  // タイル背景地図（１）淡色地図
+  var tile1 = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+    attribution:
+    '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>(淡色)',
+    maxZoom: 7
+  });
+  var tile2 = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/english/{z}/{x}/{y}.png', {
+    attribution:
+    '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>(English)',
+    maxZoom: 7
+  });
+  // タイル背景地図（３）写真
+  var tile3 = L.tileLayer(
+  'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+    attribution:
+    '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>(写真)',
+    maxZoom: 7
+  });
+  var mymap = L.map('mapid', {
+    center: [36.0, 135.0],
+    zoom: 4,
+    layers: [tile2]
+  });
+  var basemaps = {
+    "淡色地図": tile1,
+    "English": tile2,
+    "写真": tile3
+  };
+  var lyctrl = L.control.layers(basemaps, {});
+  lyctrl.addTo(mymap);
+  var mapctx = {map: mymap, ly: lyctrl};
+  //
+  var url = String(document.location).replace(/thinsample.html/, 'thinsample.json');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url);
+  if (navigator.userAgent.indexOf('Trident') == -1) {
+    xhr.responseType = 'text';
+  }
+  xhr.send();
+  xhr.addEventListener("load", function() { fileloaded(mapctx, xhr); });
+}
+
+function fileloaded(mapctx, xhr)
+{
+  var data = JSON.parse(xhr.responseText);
+  var ly = L.geoJSON(data);
+  ly.addTo(mapctx.map);
+  mapctx.ly.addOverlay(ly, tl);
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</head>
+<body>
+<div id="mapid">/map to be loaded here/</div>
+</body></html>
