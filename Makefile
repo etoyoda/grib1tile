@@ -13,3 +13,6 @@ grib1scan: $(OBJS)
 .c.o:
 	$(CC) -c $(CFLAGS) $<
 
+
+thinsample.json: thinsamplegen.rb
+	ruby thinsamplegen.rb > thinsample.json
