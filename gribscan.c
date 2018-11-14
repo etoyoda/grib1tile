@@ -275,6 +275,32 @@ gdscheck(unsigned char *gds, unsigned igrid)
   return 0u;
 }
 
+  const char *
+parm_mnemonic(unsigned iparm)
+{
+  static const char *master[65]= {
+    /* 0-9 */
+    "null", "Pres", "PrMSL", "PTend", "PVort",	"IcaHt", "Gp", "Hgt", "Dist", "HStDv",
+    /* 10-19 */
+    "TOzne", "Tmp", "VTmp", "PoT", "EPoT",	"TMax", "TMin", "DPT", "Depr", "LapR",
+    /* 20-29 */
+    "Vis", "RdSp1", "RdSp2", "RdSp3", "PLI",	"TmpA", "PresA", "GpA", "WvSp1", "WvSp2",
+    /* 30-39 */
+    "WvSp3", "WDir", "Wind", "UGrd", "VGrd",	"Strm", "VPot", "MntSF", "SgCVV", "VVel",
+    /* 40-49 */
+    "DzDt", "AbsV", "AbsD", "RelV", "RelD",	"VUCSh", "VVCSh", "DirC", "SpC", "UOGrd",
+    /* 50-59 */
+    "VOGrd", "SpfH", "RH", "MixR", "PWat",	"VapP", "SatD", "Evp", "CIce", "PRate",
+    /* 60-69 */
+    "Tstm", "APcp", "NCPcp", "ACPcp"
+  };
+  if (iparm < 64) {
+    return master[iparm];
+  } else {
+    return "?";
+  }
+}
+
 #define NPTS_MSG 3447
 #define NPTS_PLANE 26704
 
@@ -295,9 +321,10 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   double dfactor = pow(10.0, -d_scale);
   float maxval = refval + ((1 << depth) - 1) * ldexpf(1.0f, e_scale);
   int i, j;
+  const char *sparm = parm_mnemonic(iparm);
   if (iparm == 2) { dfactor *= 0.01; };
-  fprintf(stderr, "pa%03u Es%03d dp%03u min%-9.6g max%-9.6g\n",
-    iparm, e_scale, depth, refval * dfactor, maxval * dfactor);
+  fprintf(stderr, "p%03u %-6.6s Escale%03d depth%03u min%-9.6g max%-9.6g\n",
+    iparm, sparm, e_scale, depth, refval * dfactor, maxval * dfactor);
   MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
     "depth=%u blankbits=%u buflen=%zu", depth, blankbits, buflen);
   for (i = 0; i < NPTS_MSG; i++) {
