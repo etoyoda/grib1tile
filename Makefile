@@ -1,4 +1,4 @@
-OBJS=gribscan.o
+OBJS=gribscan.o cfgout.o
 LIBS= -lm
 LFLAGS= -g
 CFLAGS= -g --pedantic
@@ -13,6 +13,8 @@ grib1scan: $(OBJS)
 .c.o:
 	$(CC) -c $(CFLAGS) $<
 
+gribscan.o: gribscan.h
+cfgout.o: gribscan.h
 
 thinsample.json: thinsamplegen.rb
 	ruby thinsamplegen.rb > thinsample.json

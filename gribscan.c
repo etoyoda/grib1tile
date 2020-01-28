@@ -4,6 +4,8 @@
 #include <time.h>
 #include <math.h>
 
+#include "gribscan.h"
+
   size_t
 ui3(const unsigned char *buf)
 {
@@ -113,20 +115,6 @@ unpackbits(const unsigned char *buf, size_t nbits, size_t pos)
   size_t byteofs = (nbits * pos) / 8u;
   size_t bitofs = (nbits * pos) % 8u;
   return getbits(buf + byteofs, bitofs, nbits);
-}
-
-/* --- memory layout ---
- * dcdbuf array := n_ftime x (layers data)
- * layers data := 
- */
-
-unsigned *dcdbuf = NULL;
-
-  unsigned
-scanconfig(const char *fnam)
-{
-  
-  return 0;
 }
 
 #define VLEV_SURF 0
@@ -327,12 +315,14 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
     iparm, sparm, e_scale, depth, refval * dfactor, maxval * dfactor);
   MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
     "depth=%u blankbits=%u buflen=%zu", depth, blankbits, buflen);
+#if 0
   for (i = 0; i < NPTS_MSG; i++) {
     unsigned y;
     y = unpackbits(bds + 11u, depth, i);
     fprintf(stderr, " %u", y);
   }
   fprintf(stderr, "\n");
+#endif
   return 0;
 }
 
@@ -472,24 +462,25 @@ error:
 main(int argc, const char **argv)
 {
   unsigned r;
-  unsigned nconfig = 0, ndatafile = 0;
+  const char *datafile = NULL;
   const char **args;
+  r = new_cfgout(argc * 2);
+  if (r != 0) goto err;
   for (args = argv + 1; *args; args++) {
-    if (nconfig == 0) {
-      r = scanconfig(*args);
-      if (r != 0) goto err;
-      nconfig = 1;
+    if (datafile == NULL) {
+      datafile = *args;
     } else {
-      /* 0: okay, 1: warning, other bits: fatal */
-      r = scandata(*args);
-      if (r & ~1) goto err;
-      if (r == 0) ndatafile++;
+      r = store_cfgout(*args);
+      if (r != 0) goto err;
     }
   }
-  if (ndatafile == 0) {
-    fprintf(stderr, "usage: %s config data ...\n", argv[0]);
+  if (datafile == NULL) {
+    fprintf(stderr, "usage: %s data output ...\n", argv[0]);
+    fputs("output: proc_param_ft_lv_reftime.png\n", stderr);
     r = 2;
+    goto err;
   }
+  r = scandata(datafile);
   return r;
 err:
   fprintf(stderr, "%s: exit(%u)\n", argv[0], r);
