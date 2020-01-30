@@ -16,5 +16,8 @@ grib1scan: $(OBJS)
 gribscan.o: gribscan.h
 cfgout.o: gribscan.h
 
+clean:
+	rm -f $(OBJS)
+
 thinsample.json: thinsamplegen.rb
 	ruby thinsamplegen.rb > thinsample.json
