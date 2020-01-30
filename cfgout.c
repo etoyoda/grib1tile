@@ -16,6 +16,7 @@ struct cfgout_t {
 };
 
 static unsigned cfgsize = 0;
+static unsigned cfgcount = 0;
 static struct cfgout_t *cfg = NULL;
 
 static regex_t re_wholeplane;
@@ -25,7 +26,7 @@ new_cfgout(unsigned siz)
 {
   int r;
   cfgsize = siz;
-  /* calloc でゼロクリアする。 par がゼロを未使用の印として使う */
+  /* 念のため calloc でゼロクリアする。 */
   cfg = calloc(cfgsize, sizeof(struct cfgout_t));
   if (cfg == NULL) {
     return ERR_NOMEM;
@@ -106,13 +107,38 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   enum gribscan_err_t
 store_cfgout(const char *arg)
 {
-  int i;
   enum gribscan_err_t r;
-  for (i = 0; i < cfgsize; i++) {
-    if (cfg[i].par == 0) {
-      r = parse_cfg(cfg + i, arg);
-      return r;
-    }
+  if (cfgcount >= cfgsize) {
+    return ERR_TOOMANYCFG;
   }
-  return ERR_TOOMANYCFG;
+  r = parse_cfg(cfg + cfgcount, arg);
+  if (r == GSE_OKAY) {
+    cfgcount++;
+  }
+  return r;
+}
+
+  void *
+check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
+  unsigned lev, time_t rt)
+{
+  int i;
+  if (cfgsize == 0) {
+    struct tm tmrt;
+    char rts[64];
+    gmtime_r(&rt, &tmrt);
+    showtime(rts, sizeof rts, &tmrt);
+    printf("C%u G%u P%u F%u L%u R%s\n", ctr, gen, par, ft, lev, rts);
+    return NULL;
+  }
+  for (i = 0; i < cfgsize; i++) {
+    if (cfg[i].ctr != ctr) continue;
+    if (cfg[i].gen != gen) continue;
+    if (cfg[i].par != par) continue;
+    if (cfg[i].ft != ft) continue;
+    if (cfg[i].lev != lev) continue;
+    if (cfg[i].rt != rt) continue;
+    return cfg + i;
+  }
+  return NULL;
 }
