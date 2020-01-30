@@ -1,7 +1,7 @@
 OBJS=gribscan.o cfgout.o
 LIBS= -lm
 LFLAGS= -g
-CFLAGS= -g --pedantic -Wall
+CFLAGS= -g --pedantic -std=gnu99 -Wall -Werror
 CC=cc
 
 .SUFFIXES:

@@ -50,6 +50,7 @@ mfloat(const unsigned char *buf)
   unsigned
 getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
 {
+  unsigned c0, c1, c2, c3;
   if (nbits == 7u) {
     switch (bitofs) {
     case 0: return buf[0] >> 1;
@@ -64,49 +65,48 @@ getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
   } else if (nbits == 8u) {
     switch (bitofs) {
     case 0: return buf[0];
-    case 1: return (buf[0] << 1) & 0xFFu | buf[1] >> 7;
-    case 2: return (buf[0] << 2) & 0xFFu | buf[1] >> 6;
-    case 3: return (buf[0] << 3) & 0xFFu | buf[1] >> 5;
-    case 4: return (buf[0] << 4) & 0xFFu | buf[1] >> 4;
-    case 5: return (buf[0] << 5) & 0xFFu | buf[1] >> 3;
-    case 6: return (buf[0] << 6) & 0xFFu | buf[1] >> 2;
-    case 7: return (buf[0] << 7) & 0xFFu | buf[1] >> 1;
+    case 1: return ((buf[0] << 1) & 0xFFu) | buf[1] >> 7;
+    case 2: return ((buf[0] << 2) & 0xFFu) | buf[1] >> 6;
+    case 3: return ((buf[0] << 3) & 0xFFu) | buf[1] >> 5;
+    case 4: return ((buf[0] << 4) & 0xFFu) | buf[1] >> 4;
+    case 5: return ((buf[0] << 5) & 0xFFu) | buf[1] >> 3;
+    case 6: return ((buf[0] << 6) & 0xFFu) | buf[1] >> 2;
+    case 7: return ((buf[0] << 7) & 0xFFu) | buf[1] >> 1;
     }
   } else if (nbits == 10u) {
     switch (bitofs) {
-    case 0: return (buf[0] << 2) & 0x3FFu | buf[1] >> 6;
-    case 1: return (buf[0] << 3) & 0x3FFu | buf[1] >> 5;
-    case 2: return (buf[0] << 4) & 0x3FFu | buf[1] >> 4;
-    case 3: return (buf[0] << 5) & 0x3FFu | buf[1] >> 3;
-    case 4: return (buf[0] << 6) & 0x3FFu | buf[1] >> 2;
-    case 5: return (buf[0] << 7) & 0x3FFu | buf[1] >> 1;
-    case 6: return (buf[0] << 8) & 0x3FFu | buf[1];
-    case 7: return (buf[0] << 9) & 0x3FFu | buf[1] << 1 | buf[2] >> 7;
+    case 0: return ((buf[0] << 2) & 0x3FFu) | buf[1] >> 6;
+    case 1: return ((buf[0] << 3) & 0x3FFu) | buf[1] >> 5;
+    case 2: return ((buf[0] << 4) & 0x3FFu) | buf[1] >> 4;
+    case 3: return ((buf[0] << 5) & 0x3FFu) | buf[1] >> 3;
+    case 4: return ((buf[0] << 6) & 0x3FFu) | buf[1] >> 2;
+    case 5: return ((buf[0] << 7) & 0x3FFu) | buf[1] >> 1;
+    case 6: return ((buf[0] << 8) & 0x3FFu) | buf[1];
+    case 7: return ((buf[0] << 9) & 0x3FFu) | buf[1] << 1 | buf[2] >> 7;
     }
   } else if (nbits == 12u) {
     switch (bitofs) {
-    case 0: return (buf[0] <<  4) & 0xFFFu | buf[1] >> 4;
-    case 1: return (buf[0] <<  5) & 0xFFFu | buf[1] >> 3;
-    case 2: return (buf[0] <<  6) & 0xFFFu | buf[1] >> 2;
-    case 3: return (buf[0] <<  7) & 0xFFFu | buf[1] >> 1;
-    case 4: return (buf[0] <<  8) & 0xFFFu | buf[1];
-    case 5: return (buf[0] <<  9) & 0xFFFu | buf[1] << 1 | buf[2] >> 7;
-    case 6: return (buf[0] << 10) & 0xFFFu | buf[1] << 2 | buf[2] >> 6;
-    case 7: return (buf[0] << 11) & 0xFFFu | buf[1] << 3 | buf[2] >> 5;
+    case 0: return ((buf[0] <<  4) & 0xFFFu) | buf[1] >> 4;
+    case 1: return ((buf[0] <<  5) & 0xFFFu) | buf[1] >> 3;
+    case 2: return ((buf[0] <<  6) & 0xFFFu) | buf[1] >> 2;
+    case 3: return ((buf[0] <<  7) & 0xFFFu) | buf[1] >> 1;
+    case 4: return ((buf[0] <<  8) & 0xFFFu) | buf[1];
+    case 5: return ((buf[0] <<  9) & 0xFFFu) | buf[1] << 1 | buf[2] >> 7;
+    case 6: return ((buf[0] << 10) & 0xFFFu) | buf[1] << 2 | buf[2] >> 6;
+    case 7: return ((buf[0] << 11) & 0xFFFu) | buf[1] << 3 | buf[2] >> 5;
     }
-  } else {
-    return (buf[0] << (nbits + bitofs - 8u)) & ((1u << nbits) - 1u)
-      | (nbits + bitofs < 16u
-	  ? buf[1] >> (16u - nbits - bitofs)
-	  : buf[1] << (nbits + bitofs - 16u)
-        )
-      | (nbits + bitofs < 24u
-          ? buf[2] >> (24u - nbits - bitofs)
-	  : buf[2] << (nbits + bitofs - 24u)
-	)
-      | buf[3] >> (32u - nbits - bitofs)
-      ;
-  } 
+  }
+  c0 = (buf[0] << (nbits + bitofs - 8u)) & ((1u << nbits) - 1u);
+  c1 = nbits + bitofs < 16u
+    ? buf[1] >> (16u - nbits - bitofs)
+    : buf[1] << (nbits + bitofs - 16u)
+  ;
+  c2 = nbits + bitofs < 24u
+    ? buf[2] >> (24u - nbits - bitofs)
+    : buf[2] << (nbits + bitofs - 24u)
+  ;
+  c3 = buf[3] >> (32u - nbits - bitofs);
+  return c0 | c1 | c2 | c3;
 }
 
   unsigned
@@ -209,7 +209,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
     35, 33, 32, 30, 29, 28, 26, 25, 23, 22,
     20, 19, 17, 16, 14, 12, 11,  9,  8,  6,
     5,  3,  2 };
-  unsigned n, nrows, i;
+  unsigned nrows, i;
   long la1, la2, lo1, lo2;
   /* common feature */
   MYASSERT1(gds[3] == 0, "NV=%u", gds[3]);
@@ -308,7 +308,6 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   unsigned blankbits = bds[3] & 0xFu;
   double dfactor = pow(10.0, -d_scale);
   float maxval = refval + ((1 << depth) - 1) * ldexpf(1.0f, e_scale);
-  int i, j;
   const char *sparm = parm_mnemonic(iparm);
   if (iparm == 2) { dfactor *= 0.01; };
   fprintf(stderr, "p%03u %-6.6s Escale%03d depth%03u min%-9.6g max%-9.6g\n",
