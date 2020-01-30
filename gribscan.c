@@ -475,9 +475,7 @@ main(int argc, const char **argv)
   }
   if (datafile == NULL) {
     fprintf(stderr, "usage: %s data output ...\n", argv[0]);
-    fputs("output: proc_param_ft_lv_reftime.png\n", stderr);
-    r = 2;
-    goto err;
+    return ERR_NOINPUT;
   }
   r = scandata(datafile);
   return r;

@@ -7,10 +7,12 @@
 #include "gribscan.h"
 
 struct cfgout_t {
-  time_t rtime;
+  unsigned ctr;
+  unsigned gen;
+  unsigned par;
   unsigned ft;
-  int level;
-  int param;
+  unsigned lev;
+  time_t rt;
 };
 
 static unsigned cfgsize = 0;
@@ -23,25 +25,80 @@ new_cfgout(unsigned siz)
 {
   int r;
   cfgsize = siz;
+  /* calloc でゼロクリアする。 par がゼロを未使用の印として使う */
   cfg = calloc(cfgsize, sizeof(struct cfgout_t));
   if (cfg == NULL) {
     return ENOMEM;
   }
-#if 0
-  for (i = 0; i < cfgsize; i++) {
-    cfg[i].param = 0;
-  }
-#endif
-  r = regcomp(&re_wholeplane, "C([0-9]+)G([0-9]+)P([0-9]+)L([0-9]+)"
+  /* ついでに正規表現をコンパイルしておく */
+  /*                            1        2        3        4        5 */
+  r = regcomp(&re_wholeplane, "C([0-9]+)G([0-9]+)P([0-9]+)F([0-9]+)L([0-9]+)"
+  /*  6          7           8             9 */
     "R([0-9]{4})-([01][0-9])-([0123][0-9])T([012][0-9])Z\\.png",
     REG_EXTENDED | REG_ICASE);
   if (r != 0) return r;
   return 0;
 }
 
+  void
+regexmsg(int e, const regex_t *re)
+{
+  char buf[256];
+  regerror(e, re, buf, sizeof buf);
+  fputs(buf, stderr);
+}
+
+  time_t
+timegm6(unsigned y, unsigned m, unsigned d, unsigned h, unsigned n, unsigned s)
+{
+  char *tz;
+  time_t result;
+  struct tm tmbuf;
+  tz = getenv("TZ");
+  setenv("TZ", "", 1);
+  tzset();
+  tmbuf.tm_year = y;
+  tmbuf.tm_mon = m;
+  tmbuf.tm_mday = d;
+  tmbuf.tm_hour = h;
+  tmbuf.tm_min = n;
+  tmbuf.tm_sec = s;
+  tmbuf.tm_isdst = 0;
+  result = mktime(&tmbuf);
+  if (tz) {
+    setenv("TZ", tz, 1);
+  } else {
+    unsetenv("TZ");
+  }
+  tzset();
+  return result;
+}
+
   int
 parse_cfg(struct cfgout_t *ent, const char *arg)
 {
+  int r;
+  unsigned ry, rm, rd, rh;
+  const int NMATCH = 10;
+  regmatch_t md[NMATCH];
+  r = regexec(&re_wholeplane, arg, NMATCH, md, 0);
+  if (r == REG_NOMATCH) {
+    return ERR_OUTPAT;
+  } else if (r) {
+    regexmsg(r, &re_wholeplane);
+    return ERR_REGEX;
+  }
+  ent->ctr = strtoul(arg + md[1].rm_so, NULL, 10);
+  ent->gen = strtoul(arg + md[2].rm_so, NULL, 10);
+  ent->par = strtoul(arg + md[3].rm_so, NULL, 10);
+  ent->ft = strtoul(arg + md[4].rm_so, NULL, 10);
+  ent->lev = strtoul(arg + md[5].rm_so, NULL, 10);
+  ry = strtoul(arg + md[6].rm_so, NULL, 10);
+  rm = strtoul(arg + md[7].rm_so, NULL, 10);
+  rd = strtoul(arg + md[8].rm_so, NULL, 10);
+  rh = strtoul(arg + md[9].rm_so, NULL, 10);
+  ent->rt = timegm6(ry, rm, rd, rh, 0u, 0u);
+  
   return 0;
 }
 
@@ -50,10 +107,10 @@ store_cfgout(const char *arg)
 {
   int i, r;
   for (i = 0; i < cfgsize; i++) {
-    if (cfg[i].level == 0) {
+    if (cfg[i].par == 0) {
       r = parse_cfg(cfg + i, arg);
       if (r != 0) return r;
     }
   }
-  return ENOSPC;
+  return ERR_TOOMANYCFG;
 }
