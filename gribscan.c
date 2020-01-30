@@ -325,6 +325,9 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   return GSE_OKAY;
 }
 
+/*
+ * GRIB報buf（長さbuflenバイト）を解読する。
+ */
   enum gribscan_err_t
 scanmsg(unsigned char *buf, size_t buflen, const char *locator)
 {
@@ -338,7 +341,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   MYASSERT1((pdslen + 8 < buflen), "pdslen=%zu", pdslen);
   WEAK_ASSERT1((buf[pdsofs + 4] == 34), "origcenter=%u", buf[pdsofs + 4]);
   igrid = buf[pdsofs + 6];
-  WEAK_ASSERT1((igrid >= 37) && (igrid <= 44), "gridtype=%u", igrid);
+  WEAK_ASSERT1(((igrid >= 37) && (igrid <= 44)), "gridtype=%u", igrid);
   WEAK_ASSERT1((buf[pdsofs + 7] == 0x80u), "flags=%#X", buf[pdsofs + 7]);
   iparm = buf[pdsofs + 8];
   ilev = pds2vlev(buf + pdsofs);
@@ -370,7 +373,10 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   return r;
 }
 
-/* returns: 0=okay, 1=just warning, 2-or-more=stop */
+/*
+ * IDS(GRIB第0節, "GRIB"に続く4バイト)を読み込んで、GRIB第1版であれば
+ * 電文長だけ読み込んで解読する。
+ */
   enum gribscan_err_t
 gdecode(FILE *fp, const char *locator)
 {
@@ -382,10 +388,10 @@ gdecode(FILE *fp, const char *locator)
   zr = fread(ids, 1, 4, fp);
   if (zr < 4) {
     fputs("EOF in IDS", stderr);
-    return ERR_BADGRIB;
+    return ERR_OVERRUN;
   }
   if (ids[3] != 1u) {
-    fputs("Not GRIB Edition 1", stderr);
+    fputs("Not GRIB Edition 1\n", stderr);
     return GSE_JUSTWARN;
   }
   msglen = ui3(ids);
@@ -396,7 +402,7 @@ gdecode(FILE *fp, const char *locator)
   memcpy(msgbuf+4, ids, 4);
   zr = fread(msgbuf+8, 1, msglen-8, fp);
   if (zr < msglen - 8) {
-    fputs("EOF in GRIB", stderr);
+    fputs("EOF in GRIB\n", stderr);
     r = ERR_OVERRUN;
     goto free_and_return;
   }
@@ -407,6 +413,9 @@ free_and_return:
   return r;
 }
 
+/*
+ * ファイル名 fnam を開き、バイト列 "GRIB" を探し、そこからGRIBとして解読する。
+ */
   enum gribscan_err_t
 scandata(const char *fnam)
 {
