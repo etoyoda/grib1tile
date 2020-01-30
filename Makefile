@@ -1,7 +1,7 @@
 OBJS=gribscan.o cfgout.o
 LIBS= -lm
 LFLAGS= -g
-CFLAGS= -g --pedantic
+CFLAGS= -g --pedantic -Wall
 CC=cc
 
 .SUFFIXES:

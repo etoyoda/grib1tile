@@ -54,12 +54,12 @@ getbits(const unsigned char *buf, size_t bitofs, size_t nbits)
     switch (bitofs) {
     case 0: return buf[0] >> 1;
     case 1: return buf[0] & 0x7Fu;
-    case 2: return (buf[0] << 1) & 0x7Fu | buf[1] >> 7;
-    case 3: return (buf[0] << 2) & 0x7Fu | buf[1] >> 6;
-    case 4: return (buf[0] << 3) & 0x7Fu | buf[1] >> 5;
-    case 5: return (buf[0] << 4) & 0x7Fu | buf[1] >> 4;
-    case 6: return (buf[0] << 5) & 0x7Fu | buf[1] >> 3;
-    case 7: return (buf[0] << 6) & 0x7Fu | buf[1] >> 2;
+    case 2: return ((buf[0] << 1) & 0x7Fu) | buf[1] >> 7;
+    case 3: return ((buf[0] << 2) & 0x7Fu) | buf[1] >> 6;
+    case 4: return ((buf[0] << 3) & 0x7Fu) | buf[1] >> 5;
+    case 5: return ((buf[0] << 4) & 0x7Fu) | buf[1] >> 4;
+    case 6: return ((buf[0] << 5) & 0x7Fu) | buf[1] >> 3;
+    case 7: return ((buf[0] << 6) & 0x7Fu) | buf[1] >> 2;
     }
   } else if (nbits == 8u) {
     switch (bitofs) {
