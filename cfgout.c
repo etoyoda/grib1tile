@@ -20,7 +20,7 @@ static struct cfgout_t *cfg = NULL;
 
 static regex_t re_wholeplane;
 
-  int
+  enum gribscan_err_t
 new_cfgout(unsigned siz)
 {
   int r;
@@ -28,7 +28,7 @@ new_cfgout(unsigned siz)
   /* calloc でゼロクリアする。 par がゼロを未使用の印として使う */
   cfg = calloc(cfgsize, sizeof(struct cfgout_t));
   if (cfg == NULL) {
-    return ENOMEM;
+    return ERR_NOMEM;
   }
   /* ついでに正規表現をコンパイルしておく */
   /*                            1        2        3        4        5 */
@@ -36,8 +36,8 @@ new_cfgout(unsigned siz)
   /*  6          7           8             9 */
     "R([0-9]{4})-([01][0-9])-([0123][0-9])T([012][0-9])Z\\.png",
     REG_EXTENDED | REG_ICASE);
-  if (r != 0) return r;
-  return 0;
+  if (r != 0) return ERR_REGEX;
+  return GSE_OKAY;
 }
 
   void
@@ -74,7 +74,7 @@ timegm6(unsigned y, unsigned m, unsigned d, unsigned h, unsigned n, unsigned s)
   return result;
 }
 
-  int
+  enum gribscan_err_t
 parse_cfg(struct cfgout_t *ent, const char *arg)
 {
   int r;
@@ -83,6 +83,7 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   regmatch_t md[NMATCH];
   r = regexec(&re_wholeplane, arg, NMATCH, md, 0);
   if (r == REG_NOMATCH) {
+    fprintf(stderr, "bad filename '%s'\n", arg);
     return ERR_OUTPAT;
   } else if (r) {
     regexmsg(r, &re_wholeplane);
@@ -99,17 +100,18 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   rh = strtoul(arg + md[9].rm_so, NULL, 10);
   ent->rt = timegm6(ry, rm, rd, rh, 0u, 0u);
   
-  return 0;
+  return GSE_OKAY;
 }
 
-  int
+  enum gribscan_err_t
 store_cfgout(const char *arg)
 {
-  int i, r;
+  int i;
+  enum gribscan_err_t r;
   for (i = 0; i < cfgsize; i++) {
     if (cfg[i].par == 0) {
       r = parse_cfg(cfg + i, arg);
-      if (r != 0) return r;
+      return r;
     }
   }
   return ERR_TOOMANYCFG;

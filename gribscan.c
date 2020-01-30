@@ -188,16 +188,16 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
 #define MYASSERT1(test, _plusfmt, val) \
   if (!(test)) { \
     fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
-    return 3u; \
+    return ERR_BADGRIB; \
   }
 
 #define MYASSERT3(test, _plusfmt, v1, v2, v3) \
   if (!(test)) { \
     fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, v1, v2, v3); \
-    return 3u; \
+    return ERR_BADGRIB; \
   }
 
-  unsigned
+  enum gribscan_err_t
 gdscheck(unsigned char *gds, unsigned igrid)
 {
   const unsigned thinpat[73] = {
@@ -260,7 +260,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
     break;
   }
 
-  return 0u;
+  return GSE_OKAY;
 }
 
   const char *
@@ -295,10 +295,10 @@ parm_mnemonic(unsigned iparm)
 #define WEAK_ASSERT1(test, _plusfmt, val) \
   if (!(test)) { \
     fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
-    return 1u; \
+    return GSE_JUSTWARN; \
   }
 
-  unsigned
+  enum gribscan_err_t
 bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned iparm,
   int d_scale)
 {
@@ -322,13 +322,13 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   }
   fprintf(stderr, "\n");
 #endif
-  return 0;
+  return GSE_OKAY;
 }
 
-  unsigned
+  enum gribscan_err_t
 scanmsg(unsigned char *buf, size_t buflen, const char *locator)
 {
-  unsigned r = 0;
+  enum gribscan_err_t r = GSE_OKAY;
   size_t pdsofs = 8, pdslen, gdsofs, gdslen, bdsofs, bdslen;
   unsigned igrid, iparm;
   int ilev, ift1, ift2, d_scale;
@@ -344,7 +344,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   ilev = pds2vlev(buf + pdsofs);
   if (ilev == VLEV_ERR) {
     fprintf(stderr, "unsupported vert level %u\n", buf[pdsofs + 9]);
-    return 1;
+    return GSE_JUSTWARN;
   }
   pdsreftime(&reftime, buf + pdsofs);
   pdsftime(&ift1, &ift2, buf + pdsofs);
@@ -357,7 +357,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   gdslen = ui3(buf + gdsofs);
   /* may return 1 */
   r = gdscheck(buf + gdsofs, igrid);
-  if (r != 0) {
+  if (r != GSE_OKAY) {
     return r;
   }
   bdsofs = gdsofs + gdslen;
@@ -371,10 +371,10 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
 }
 
 /* returns: 0=okay, 1=just warning, 2-or-more=stop */
-  unsigned
+  enum gribscan_err_t
 gdecode(FILE *fp, const char *locator)
 {
-  unsigned r = 0;
+  enum gribscan_err_t r = GSE_OKAY;
   unsigned char ids[4];
   size_t zr, msglen;
   unsigned char *msgbuf;
@@ -382,25 +382,23 @@ gdecode(FILE *fp, const char *locator)
   zr = fread(ids, 1, 4, fp);
   if (zr < 4) {
     fputs("EOF in IDS", stderr);
-    return 3u;
+    return ERR_BADGRIB;
   }
   if (ids[3] != 1u) {
     fputs("Not GRIB Edition 1", stderr);
-    return 1u;
+    return GSE_JUSTWARN;
   }
   msglen = ui3(ids);
   msgbuf = malloc(msglen);
-  if (msgbuf == NULL) {
-    perror("malloc");
-    return 1u;
-  }
+  if (msgbuf == NULL) { return ERR_NOMEM; }
   /* --- begin ensure malloc-free --- */
   memcpy(msgbuf+0, "GRIB", 4);
   memcpy(msgbuf+4, ids, 4);
   zr = fread(msgbuf+8, 1, msglen-8, fp);
   if (zr < msglen - 8) {
     fputs("EOF in GRIB", stderr);
-    r = 1; goto free_and_return;
+    r = ERR_OVERRUN;
+    goto free_and_return;
   }
   r = scanmsg(msgbuf, msglen, locator);
 free_and_return:
@@ -409,14 +407,14 @@ free_and_return:
   return r;
 }
 
-  unsigned
+  enum gribscan_err_t
 scandata(const char *fnam)
 {
+  enum gribscan_err_t r = GSE_OKAY;
   FILE *fp;
   long lpos = 0;
   int c;
   int state = 0;
-  unsigned r = 0;
   fp = fopen(fnam, "rb");
   if (fp == NULL) { goto error; }
   fprintf(stderr, "=== file %s ===\n", fnam);
@@ -439,11 +437,12 @@ scandata(const char *fnam)
 	snprintf(locator, sizeof locator, "%-.24s:%lu",
 	  fnam + ((strlen(fnam) > 24) ? (strlen(fnam) - 24) : 0), lpos);
 	r = gdecode(fp, locator);
-	if (r != 0) {
+	if (r != GSE_OKAY) {
 	  fprintf(stderr, "%s: GRIB1 decode %u\n", locator, r);
+	  if (r != GSE_JUSTWARN) {
+	    goto klose;
+	  }
 	}
-	/* return code 1 is just warning, but 2 or more stops reading of the file */
-	if (r & ~1) goto klose;
       }
       state = 0;
       break;
@@ -454,23 +453,23 @@ klose:
   return r;
 error:
   perror(fnam);
-  return 2;
+  return ERR_IO;
 }
 
   int
 main(int argc, const char **argv)
 {
-  unsigned r;
+  gribscan_err_t r;
   const char *datafile = NULL;
   const char **args;
   r = new_cfgout(argc * 2);
-  if (r != 0) goto err;
+  if (r != GSE_OKAY) goto err;
   for (args = argv + 1; *args; args++) {
     if (datafile == NULL) {
       datafile = *args;
     } else {
       r = store_cfgout(*args);
-      if (r != 0) goto err;
+      if (r != GSE_OKAY) goto err;
     }
   }
   if (datafile == NULL) {
