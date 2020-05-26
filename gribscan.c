@@ -215,14 +215,15 @@ gdscheck(unsigned char *gds, unsigned igrid)
   MYASSERT1(gds[3] == 0, "NV=%u", gds[3]);
   MYASSERT1(gds[5] == 0, "gridtype=%u", gds[5]);
   nrows = ui2(gds + 8);
-  MYASSERT1(nrows == 73u, "%u", nrows);
   /* igrid-dependent feature */
   la1 = si3(gds + 10);
   lo1 = si3(gds + 13);
   la2 = si3(gds + 17);
   lo2 = si3(gds + 20);
+  /* check latitude range */
   switch (igrid) {
   case 37: case 38: case 39: case 40:
+    MYASSERT1(nrows == 73u, "%u", nrows);
     MYASSERT1((la1 == 0), "%lu", la1);
     MYASSERT1((la2 == 90000), "%lu", la2);
     for (i = 0; i < 73; i++) {
@@ -232,23 +233,30 @@ gdscheck(unsigned char *gds, unsigned igrid)
     }
     break;
   case 41: case 42: case 43: case 44:
-    MYASSERT1((la1 == -90000), "%lu", la1);
-    MYASSERT1((la2 == 0), "%lu", la2);
+    MYASSERT1(nrows == 73u, "%u", nrows);
+    MYASSERT1((la1 == -90000), "%ld", la1);
+    MYASSERT1((la2 == 0), "%ld", la2);
     for (i = 0; i < 73; i++) {
       unsigned ncols = ui2(gds + gds[4] + i * 2 - 1);
       MYASSERT3((ncols == thinpat[72-i]), "ncols=%u thinpatS[%u]=%u",
         ncols, i, thinpat[72-i]);
     }
     break;
+  case 255:
+    MYASSERT1(nrows == 65u, "%u", nrows);
+    MYASSERT1((la1 == 60000), "%ld", la1);
+    MYASSERT1((la2 == -20000), "%ld", la2);
+    break;
   }
+  /* longitude range check */
   switch (igrid) {
   case 37: case 41:
-    MYASSERT1((lo1 == 330000), "%lu", lo1);
-    MYASSERT1((lo2 == 60000), "%lu", lo2);
+    MYASSERT1((lo1 == 330000), "%ld", lo1);
+    MYASSERT1((lo2 == 60000), "%ld", lo2);
     break;
   case 38: case 42:
-    MYASSERT1((lo1 == 60000), "%lu", lo1);
-    MYASSERT1((lo2 == 150000), "%lu", lo2);
+    MYASSERT1((lo1 == 60000), "%ld", lo1);
+    MYASSERT1((lo2 == 150000), "%ld", lo2);
     break;
   case 39: case 43:
     MYASSERT1((lo1 == 150000), "%lu", lo1);
@@ -257,6 +265,10 @@ gdscheck(unsigned char *gds, unsigned igrid)
   case 40: case 44:
     MYASSERT1((lo1 == 240000), "%lu", lo1);
     MYASSERT1((lo2 == 330000), "%lu", lo2);
+    break;
+  case 255:
+    MYASSERT1((lo1 == 60000), "%ld", lo1);
+    MYASSERT1((lo2 == 200000), "%ld", lo2);
     break;
   }
 
@@ -312,6 +324,7 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   if (iparm == 2) { dfactor *= 0.01; };
   fprintf(stderr, "p%03u %-6.6s Escale%03d depth%03u min%-9.6g max%-9.6g\n",
     iparm, sparm, e_scale, depth, refval * dfactor, maxval * dfactor);
+  WEAK_ASSERT1((igrid != 255), "%u", igrid);
   MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
     "depth=%u blankbits=%u buflen=%zu", depth, blankbits, buflen);
 #if 0
@@ -341,7 +354,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   MYASSERT1((pdslen + 8 < buflen), "pdslen=%zu", pdslen);
   WEAK_ASSERT1((buf[pdsofs + 4] == 34), "origcenter=%u", buf[pdsofs + 4]);
   igrid = buf[pdsofs + 6];
-  WEAK_ASSERT1(((igrid >= 37) && (igrid <= 44)), "gridtype=%u", igrid);
+  WEAK_ASSERT1((((igrid >= 37) && (igrid <= 44)) || (igrid == 255)), "gridtype=%u", igrid);
   WEAK_ASSERT1((buf[pdsofs + 7] == 0x80u), "flags=%#X", buf[pdsofs + 7]);
   iparm = buf[pdsofs + 8];
   ilev = pds2vlev(buf + pdsofs);
