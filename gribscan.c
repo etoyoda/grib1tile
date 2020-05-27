@@ -327,8 +327,8 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   const char *sparm = parm_mnemonic(iparm);
   unsigned npts;
   if (iparm == 2) { dfactor *= 0.01; };
-  fprintf(stderr, "p%03u %-6.6s Escale%03d depth%03u min%-9.6g max%-9.6g\n",
-    iparm, sparm, e_scale, depth, refval * dfactor, maxval * dfactor);
+  fprintf(stderr, "p%03u %-6.6s d%03d E%03d depth%03u min%-9.6g max%-9.6g\n",
+    iparm, sparm, d_scale, e_scale, depth, refval * dfactor, maxval * dfactor);
   switch (igrid) {
     case 37: case 38: case 39: case 40: case 41: case 42: case 43: case 44:
       npts = 3447u;
