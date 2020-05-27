@@ -172,6 +172,7 @@ pdsftime(int *pift1, int *pift2, const unsigned char *buf)
   }
   switch (buf[20]) {
   case 0:
+  case 1:
     *pift1 = *pift2 = buf[18] * factor;
     break;
   case 4:
