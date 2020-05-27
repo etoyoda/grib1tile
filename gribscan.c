@@ -306,7 +306,6 @@ parm_mnemonic(unsigned iparm)
   }
 }
 
-#define NPTS_MSG 3447
 #define NPTS_PLANE 26704
 
 #define WEAK_ASSERT1(test, _plusfmt, val) \
@@ -326,14 +325,25 @@ bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned ipar
   double dfactor = pow(10.0, -d_scale);
   float maxval = refval + ((1 << depth) - 1) * ldexpf(1.0f, e_scale);
   const char *sparm = parm_mnemonic(iparm);
+  unsigned npts;
   if (iparm == 2) { dfactor *= 0.01; };
   fprintf(stderr, "p%03u %-6.6s Escale%03d depth%03u min%-9.6g max%-9.6g\n",
     iparm, sparm, e_scale, depth, refval * dfactor, maxval * dfactor);
-  WEAK_ASSERT1((igrid != 255), "%u", igrid);
-  MYASSERT3(depth * NPTS_MSG + blankbits + 88u == buflen * 8,
+  switch (igrid) {
+    case 37: case 38: case 39: case 40: case 41: case 42: case 43: case 44:
+      npts = 3447u;
+      break;
+    case 255:
+      npts = 7345u;
+      break;
+    default:
+      fprintf(stderr, "unsupported igrid=%u\n", igrid);
+      return GSE_JUSTWARN;
+  }
+  MYASSERT3(depth * npts + blankbits + 88u == buflen * 8,
     "depth=%u blankbits=%u buflen=%zu", depth, blankbits, buflen);
 #if 0
-  for (i = 0; i < NPTS_MSG; i++) {
+  for (i = 0; i < npts; i++) {
     unsigned y;
     y = unpackbits(bds + 11u, depth, i);
     fprintf(stderr, " %u", y);
