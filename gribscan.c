@@ -210,11 +210,12 @@ gdscheck(unsigned char *gds, unsigned igrid)
     35, 33, 32, 30, 29, 28, 26, 25, 23, 22,
     20, 19, 17, 16, 14, 12, 11,  9,  8,  6,
     5,  3,  2 };
-  unsigned nrows, i;
+  unsigned nrows, ncols, i;
   long la1, la2, lo1, lo2;
   /* common feature */
   MYASSERT1(gds[3] == 0, "NV=%u", gds[3]);
   MYASSERT1(gds[5] == 0, "gridtype=%u", gds[5]);
+  ncols = ui2(gds + 6);
   nrows = ui2(gds + 8);
   /* igrid-dependent feature */
   la1 = si3(gds + 10);
@@ -224,6 +225,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
   /* check latitude range */
   switch (igrid) {
   case 37: case 38: case 39: case 40:
+    MYASSERT1(ncols == 0xFFFF, "%u", ncols);
     MYASSERT1(nrows == 73u, "%u", nrows);
     MYASSERT1((la1 == 0), "%lu", la1);
     MYASSERT1((la2 == 90000), "%lu", la2);
@@ -234,6 +236,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
     }
     break;
   case 41: case 42: case 43: case 44:
+    MYASSERT1(ncols == 0xFFFF, "%u", ncols);
     MYASSERT1(nrows == 73u, "%u", nrows);
     MYASSERT1((la1 == -90000), "%ld", la1);
     MYASSERT1((la2 == 0), "%ld", la2);
@@ -244,6 +247,7 @@ gdscheck(unsigned char *gds, unsigned igrid)
     }
     break;
   case 255:
+    MYASSERT1(ncols == 113u, "%u", ncols);
     MYASSERT1(nrows == 65u, "%u", nrows);
     MYASSERT1((la1 == 60000), "%ld", la1);
     MYASSERT1((la2 == -20000), "%ld", la2);
