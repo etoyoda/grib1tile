@@ -1,5 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+/* 注意: x 方向の両端を 0°E にするような真似はしない */
+  double
+xproj(unsigned nx, double lon)
+{
+  if (lon < 0.0) { lon += 360.0; }
+  if (lon > 360.0) { lon -= 360.0; }
+  return lon * nx / 360.0;
+}
+
+  double
+yproj(unsigned ny, double lat)
+{
+  double y;
+  y = 0.5 - log(tan(M_PI / 4 + M_PI * lat / 360.0)) / (M_PI * 2.0);
+  if (y < 0.0) { y = 0.0; }
+  if (y > 1.0) { y = 1.0; }
+  return y * (ny - 1);
+}
 
   void
 accregular(unsigned nx, unsigned ny, float oary[],

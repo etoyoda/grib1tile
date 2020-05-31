@@ -11,7 +11,7 @@ grib1scan: $(OBJS)
 	$(CC) $(LFLAGS) -o grib1scan $(OBJS) $(LIBS)
 
 xweight: xweight.o
-	$(CC) $(LFLAGS) -o xweight xweight.o
+	$(CC) $(LFLAGS) -o xweight xweight.o -lm
 
 .c.o:
 	$(CC) -c $(CFLAGS) $<
