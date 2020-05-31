@@ -21,6 +21,25 @@ yproj(unsigned ny, double lat)
   return y * (ny - 1);
 }
 
+  double
+x2rlon(unsigned nx, double x)
+{
+  return (x / nx) * M_PI * 2.0;
+}
+
+  double
+y2rlat(unsigned ny, double y)
+{
+  double yn = (0.5 - y / (ny - 1)) * 2.0 * M_PI;
+  return 2.0 * atan(exp(yn)) - M_PI_2;
+}
+
+  double
+deg2rad(double deg)
+{
+  return deg * (M_PI / 180.0);
+}
+
   void
 accregular(unsigned nx, unsigned ny, float oary[],
   double lon1, double lon2, unsigned nlon,
@@ -31,7 +50,9 @@ accregular(unsigned nx, unsigned ny, float oary[],
     double lat = lat1 + ((lat2 - lat1) * ilat) / (nlat - 1);
     for (ilon = 0; ilon < nlon; ilon++) {
       double lon = lon1 + ((lon2 - lon1) * ilon) / (nlon - 1);
-      printf("%3u %3u %8.2f %8.2f\n", ilat, ilon, lat, lon);
+      double x = xproj(nx, lon);
+      double y = yproj(ny, lat);
+      printf("%3u %3u %8.2f %8.2f %8.2f %8.2f %8.2f\n", ilat, ilon, lat, lon, x, y, y2rlat(ny, y) / M_PI * 180.0);
     }
   }
 }
