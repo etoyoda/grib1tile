@@ -62,14 +62,15 @@ weight(double d2fact, double lon1, double lat1, double lon2, double lat2)
   void
 accpoint(unsigned nx, unsigned ny, float oary[], double lon, double lat)
 {
-  const unsigned width = 3;
+  const unsigned width = 14;
+  const unsigned height = 8;
   unsigned ix, ay, by, iy;
   double x = xproj(nx, lon);
   double y = yproj(ny, lat);
   double d2fact = (double)(nx * nx) / (4.0 * M_PI * M_PI);
-  ay = floor(y) - width;
+  ay = floor(y) - height;
   if (ay < 0) { ay = 0; }
-  by = floor(y) + width;
+  by = floor(y) + height;
   if (by >= ny) { by = ny - 1; }
   for (iy = ay; iy <= by; iy++) {
     double orlat = y2rlat(ny, iy);
@@ -98,11 +99,42 @@ accregular(unsigned nx, unsigned ny, float oary[],
   }
 }
 
+const unsigned thinpat[73] = {
+  73, 73, 73, 73, 73, 73, 73, 73, 72, 72,
+  72, 71, 71, 71, 70, 70, 69, 69, 68, 67,
+  67, 66, 65, 65, 64, 63, 62, 61, 60, 60,
+  59, 58, 57, 56, 55, 54, 52, 51, 50, 49,
+  48, 47, 45, 44, 43, 42, 40, 39, 38, 36,
+  35, 33, 32, 30, 29, 28, 26, 25, 23, 22,
+  20, 19, 17, 16, 14, 12, 11,  9,  8,  6,
+  5,  3,  2 };
+
+  void
+accthin(unsigned nx, unsigned ny, float oary[],
+  double lon1, double lon2,
+  double lat1, double lat2, unsigned nlat)
+{
+  unsigned ilon, ilat, nlon;
+  for (ilat = 0; ilat < nlat; ilat++) {
+    double lat = lat1 + ((lat2 - lat1) * ilat) / (nlat - 1);
+    nlon = (lat1 == 0.0) ? (thinpat[ilat]) : (thinpat[nlat - ilat - 1]);
+    for (ilon = 0; ilon < nlon; ilon++) {
+      double lon = lon1 + ((lon2 - lon1) * ilon) / (nlon - 1);
+      printf("%3u %3u %8.2f %8.2f\n", ilat, ilon, lat, lon);
+      accpoint(nx, ny, oary, lon, lat);
+    }
+  }
+}
+
   void
 accweight(unsigned nx, unsigned ny, float oary[], int igrid)
 {
   switch (igrid) {
   case 37:
+    accthin(nx, ny, oary, -30.0, 60.0, 0.0, 90.0, 73u);
+  break;
+  case 38:
+    accthin(nx, ny, oary, 60.0, 150.0, 0.0, 90.0, 73u);
   break;
   case 44:
   break;
@@ -152,6 +184,6 @@ main(int argc, char **argv)
   for (i = 37; i <= 44; i++) {
     accweight(nx, ny, oary, i);
   }
-  accweight(nx, ny, oary, 255);
+  //accweight(nx, ny, oary, 255);
   return bwrite(nx, ny, oary, "zweight.out");
 }
