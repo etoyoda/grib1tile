@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+/** 経度 lon （度）から出力格子位置 x （端数あり）を計算する */
 /* 注意: x 方向の両端を 0°E にするような真似はしない */
   double
 xproj(unsigned nx, double lon)
@@ -11,6 +12,7 @@ xproj(unsigned nx, double lon)
   return lon * nx / 360.0;
 }
 
+/** 経度 lat （度）から出力格子位置 y （端数あり）を計算する */
   double
 yproj(unsigned ny, double lat)
 {
@@ -21,12 +23,14 @@ yproj(unsigned ny, double lat)
   return y * (ny - 1);
 }
 
+/** 出力格子位置 x （端数あり）から経度（ラジアン）を計算する */
   double
 x2rlon(unsigned nx, double x)
 {
   return (x / nx) * M_PI * 2.0;
 }
 
+/** 出力格子位置 y （端数あり）から緯度（ラジアン）を計算する */
   double
 y2rlat(unsigned ny, double y)
 {
@@ -34,6 +38,7 @@ y2rlat(unsigned ny, double y)
   return 2.0 * atan(exp(yn)) - M_PI_2;
 }
 
+/** 角度（度）をラジアンに換算 */
   double
 deg2rad(double deg)
 {
