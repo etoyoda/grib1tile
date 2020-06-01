@@ -18,8 +18,6 @@ yproj(unsigned ny, double lat)
 {
   double y;
   y = 0.5 - log(tan(M_PI / 4 + M_PI * lat / 360.0)) / (M_PI * 2.0);
-  if (y < 0.0) { y = 0.0; }
-  if (y > 1.0) { y = 1.0; }
   return y * (ny - 1);
 }
 
@@ -46,6 +44,12 @@ deg2rad(double deg)
 }
 
   double
+rad2deg(double rad)
+{
+  return rad * (180.0 / M_PI);
+}
+
+  double
 weight(double d2fact, double lon1, double lat1, double lon2, double lat2)
 {
   double x1, x2, y1, y2, z1, z2, dsq;
@@ -62,12 +66,16 @@ weight(double d2fact, double lon1, double lat1, double lon2, double lat2)
   void
 accpoint(unsigned nx, unsigned ny, float oary[], double lon, double lat)
 {
-  const unsigned width = 14;
-  const unsigned height = 8;
-  unsigned ix, ay, by, iy;
-  double x = xproj(nx, lon);
-  double y = yproj(ny, lat);
+  signed width = 6;
+  signed height = 5;
+  signed ix, ay, by, iy;
   double d2fact = (double)(nx * nx) / (4.0 * M_PI * M_PI);
+  double x = xproj(nx, lon);
+  double y;
+  if (lat <= -88.0) return;
+  y = yproj(ny, lat);
+  if (y < -0.0) return;
+  if ((lat >= -40.0) && (lat <= 40.0)) { width = height = 2; }
   ay = floor(y) - height;
   if (ay < 0) { ay = 0; }
   by = floor(y) + height;
@@ -75,7 +83,7 @@ accpoint(unsigned nx, unsigned ny, float oary[], double lon, double lat)
   for (iy = ay; iy <= by; iy++) {
     double orlat = y2rlat(ny, iy);
     for (ix = floor(x) - width; ix <= floor(x) + width; ix++) {
-      unsigned cx = ix % nx;
+      signed cx = ix % nx;
       double orlon = x2rlon(nx, cx);
       unsigned oofs = cx + nx * iy;
       oary[oofs] += weight(d2fact, orlon, orlat, deg2rad(lon), deg2rad(lat));
@@ -93,7 +101,6 @@ accregular(unsigned nx, unsigned ny, float oary[],
     double lat = lat1 + ((lat2 - lat1) * ilat) / (nlat - 1);
     for (ilon = 0; ilon < nlon; ilon++) {
       double lon = lon1 + ((lon2 - lon1) * ilon) / (nlon - 1);
-      printf("%3u %3u %8.2f %8.2f\n", ilat, ilon, lat, lon);
       accpoint(nx, ny, oary, lon, lat);
     }
   }
@@ -120,7 +127,6 @@ accthin(unsigned nx, unsigned ny, float oary[],
     nlon = (lat1 == 0.0) ? (thinpat[ilat]) : (thinpat[nlat - ilat - 1]);
     for (ilon = 0; ilon < nlon; ilon++) {
       double lon = lon1 + ((lon2 - lon1) * ilon) / (nlon - 1);
-      printf("%3u %3u %8.2f %8.2f\n", ilat, ilon, lat, lon);
       accpoint(nx, ny, oary, lon, lat);
     }
   }
@@ -136,7 +142,23 @@ accweight(unsigned nx, unsigned ny, float oary[], int igrid)
   case 38:
     accthin(nx, ny, oary, 60.0, 150.0, 0.0, 90.0, 73u);
   break;
+  case 39:
+    accthin(nx, ny, oary, 150.0, 240.0, 0.0, 90.0, 73u);
+  break;
+  case 40:
+    accthin(nx, ny, oary, 240.0, 330.0, 0.0, 90.0, 73u);
+  break;
+  case 41:
+    accthin(nx, ny, oary, -30.0, 60.0, -90.0, 0.0, 73u);
+  break;
+  case 42:
+    accthin(nx, ny, oary, 60.0, 150.0, -90.0, 0.0, 73u);
+  break;
+  case 43:
+    accthin(nx, ny, oary, 150.0, 240.0, -90.0, 0.0, 73u);
+  break;
   case 44:
+    accthin(nx, ny, oary, 240.0, 330.0, -90.0, 0.0, 73u);
   break;
   case 255:
     accregular(nx, ny, oary, 60.0, 200.0, 113u, 60.0, -20.0, 65u);
@@ -184,6 +206,6 @@ main(int argc, char **argv)
   for (i = 37; i <= 44; i++) {
     accweight(nx, ny, oary, i);
   }
-  //accweight(nx, ny, oary, 255);
+  accweight(nx, ny, oary, 255);
   return bwrite(nx, ny, oary, "zweight.out");
 }
