@@ -45,6 +45,43 @@ deg2rad(double deg)
   return deg * (M_PI / 180.0);
 }
 
+  double
+weight(double d2fact, double lon1, double lat1, double lon2, double lat2)
+{
+  double x1, x2, y1, y2, z1, z2, dsq;
+  x1 = cos(lon1) * cos(lat1);
+  y1 = sin(lon1) * cos(lat1);
+  z1 = sin(lat1);
+  x2 = cos(lon2) * cos(lat2);
+  y2 = sin(lon2) * cos(lat2);
+  z2 = sin(lat2);
+  dsq = -(x1-x2)*(x1-x2) - (y1-y2)*(y1-y2) - (z1-z2)*(z1-z2);
+  return exp(dsq * d2fact);
+}
+
+  void
+accpoint(unsigned nx, unsigned ny, float oary[], double lon, double lat)
+{
+  const unsigned width = 3;
+  unsigned ix, ay, by, iy;
+  double x = xproj(nx, lon);
+  double y = yproj(ny, lat);
+  double d2fact = (double)(nx * nx) / (4.0 * M_PI * M_PI);
+  ay = floor(y) - width;
+  if (ay < 0) { ay = 0; }
+  by = floor(y) + width;
+  if (by >= ny) { by = ny - 1; }
+  for (iy = ay; iy <= by; iy++) {
+    double orlat = y2rlat(ny, iy);
+    for (ix = floor(x) - width; ix <= floor(x) + width; ix++) {
+      unsigned cx = ix % nx;
+      double orlon = x2rlon(nx, cx);
+      unsigned oofs = cx + nx * iy;
+      oary[oofs] += weight(d2fact, orlon, orlat, deg2rad(lon), deg2rad(lat));
+    }
+  }
+}
+
   void
 accregular(unsigned nx, unsigned ny, float oary[],
   double lon1, double lon2, unsigned nlon,
@@ -55,9 +92,8 @@ accregular(unsigned nx, unsigned ny, float oary[],
     double lat = lat1 + ((lat2 - lat1) * ilat) / (nlat - 1);
     for (ilon = 0; ilon < nlon; ilon++) {
       double lon = lon1 + ((lon2 - lon1) * ilon) / (nlon - 1);
-      double x = xproj(nx, lon);
-      double y = yproj(ny, lat);
-      printf("%3u %3u %8.2f %8.2f %8.2f %8.2f %8.2f\n", ilat, ilon, lat, lon, x, y, y2rlat(ny, y) / M_PI * 180.0);
+      printf("%3u %3u %8.2f %8.2f\n", ilat, ilon, lat, lon);
+      accpoint(nx, ny, oary, lon, lat);
     }
   }
 }
