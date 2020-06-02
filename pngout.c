@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include <float.h>
 #include <png.h>
 #include "pngout.h"
 
@@ -66,6 +67,9 @@ outpngf(unsigned width, unsigned height, const float *ary,
   const char *filename)
 {
   png_bytep *ovector;
+  float fmin = FLT_MAX;
+  float fmax = -FLT_MAX;
+  unsigned nnan = 0;
   int r;
   /* allocate */
   ovector = newpngbuf(width, height);
@@ -78,15 +82,19 @@ outpngf(unsigned width, unsigned height, const float *ary,
         ovector[j][i * 4 + 1] = 0x00;
         ovector[j][i * 4 + 2] = 0x00;
         ovector[j][i * 4 + 3] = 0xFF;
+        nnan++;
       } else {
         signed long ival = ary[ofs];
         ovector[j][i * 4]     = (ival >> 16) & 0xFF;
         ovector[j][i * 4 + 1] = (ival >> 8) & 0xFF;
         ovector[j][i * 4 + 2] = ival & 0xFF;
         ovector[j][i * 4 + 3] = 0xFF;
+        if (ary[ofs] > fmax) fmax = ary[ofs];
+        if (ary[ofs] < fmin) fmin = ary[ofs];
       }
     }
   }
+  printf("nan=%u min=%8.4g max=%8.4g\n", nnan, fmin, fmax);
   /* action */
   r = outpng(width, height, ovector, filename);
   /* free */
