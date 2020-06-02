@@ -51,14 +51,12 @@ newpngbuf(unsigned width, unsigned height)
   for (int j = 0; j < height; j++) {
     vector[j] = buf + j * width * 4;
   }
-  printf("# vector=%p vector[0]=%p buf=%p\n", (void *)vector, vector[0], buf);
   return vector;
 }
 
   void
 freepngbuf(png_bytep *vector)
 {
-  printf("# vector=%p vector[0]=%p\n", (void *)vector, vector[0]);
   free(vector[0]);
   free(vector);
 }
