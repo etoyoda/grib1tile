@@ -21,6 +21,7 @@ static struct cfgout_t *cfg = NULL;
 
 static regex_t re_wholeplane;
 
+/* 設定配列 cfg を siz 個要素確保する。 */
   enum gribscan_err_t
 new_cfgout(unsigned siz)
 {
@@ -75,6 +76,7 @@ timegm6(unsigned y, unsigned m, unsigned d, unsigned h, unsigned n, unsigned s)
   return result;
 }
 
+/* 文字列 arg を解読し ent に保存する。 */
   enum gribscan_err_t
 parse_cfg(struct cfgout_t *ent, const char *arg)
 {
@@ -104,6 +106,7 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   return GSE_OKAY;
 }
 
+/* 設定文字列 arg を解読し、内部配列 cfg の末尾に保存する。 */
   enum gribscan_err_t
 store_cfgout(const char *arg)
 {
@@ -118,6 +121,9 @@ store_cfgout(const char *arg)
   return r;
 }
 
+/* GRIB報諸元（発信中枢 ctr, 作成処理 gen, パラメタ par, 予報時間 ft, 高度 lev, 参照日時 rt）について
+   設定配列  cfg に対応するエントリがあればそれを返す
+   */
   void *
 check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
   unsigned lev, time_t rt)
