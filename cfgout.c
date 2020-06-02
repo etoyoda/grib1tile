@@ -6,15 +6,6 @@
 
 #include "gribscan.h"
 
-struct cfgout_t {
-  unsigned ctr;
-  unsigned gen;
-  unsigned par;
-  unsigned ft;
-  unsigned lev;
-  time_t rt;
-};
-
 static unsigned cfgsize = 0;
 static unsigned cfgcount = 0;
 static struct cfgout_t *cfg = NULL;
@@ -124,7 +115,7 @@ store_cfgout(const char *arg)
 /* GRIB報諸元（発信中枢 ctr, 作成処理 gen, パラメタ par, 予報時間 ft, 高度 lev, 参照日時 rt）について
    設定配列  cfg に対応するエントリがあればそれを返す
    */
-  void *
+  struct cfgout_t *
 check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
   unsigned lev, time_t rt)
 {

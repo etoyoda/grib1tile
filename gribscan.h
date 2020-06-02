@@ -15,12 +15,21 @@ typedef enum gribscan_err_t {
 
 /* --- cfgout.c --- */
 
+struct cfgout_t {
+  unsigned ctr;
+  unsigned gen;
+  unsigned par;
+  unsigned ft;
+  unsigned lev;
+  time_t rt;
+};
+
 extern enum gribscan_err_t new_cfgout(unsigned size);
 extern enum gribscan_err_t store_cfgout(const char *arg);
 extern time_t timegm6(unsigned y, unsigned m, unsigned d,
   unsigned h, unsigned n, unsigned s);
-extern void *
-check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
+extern struct cfgout_t *
+  check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
   unsigned lev, time_t rt);
 
 /* --- gribscan.c --- */
