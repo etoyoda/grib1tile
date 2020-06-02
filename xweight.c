@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "pngout.h"
 
 /** 経度 lon （度）から出力格子位置 x （端数あり）を計算する */
 /* 注意: x 方向の両端を 0°E にするような真似はしない */
@@ -172,9 +173,12 @@ accweight(unsigned nx, unsigned ny, float oary[], int igrid)
   int
 bwrite(unsigned nx, unsigned ny, float oary[], const char *ofn)
 {
+#if 1
   unsigned nw;
   FILE *ofp;
-  ofp = fopen(ofn, "wb");
+  char cmd[256];
+  int r;
+  ofp = fopen("ztmp.gray", "wb");
   if (ofp == NULL) {
     perror(ofn);
     return 16;
@@ -185,7 +189,22 @@ bwrite(unsigned nx, unsigned ny, float oary[], const char *ofn)
     return 16;
   }
   fclose(ofp);
-  return 0;
+  r = snprintf(cmd, sizeof cmd,
+  "convert -size %ux%u -depth 32 -define "
+  "quantum:format=floating-point ztmp.gray %s", nx, ny, ofn);
+  if (r > sizeof cmd) {
+    fputs("too long filename\n", stderr);
+    return 8;
+  }
+  r = system(cmd);
+  if (r == -1) {
+    perror(cmd);
+    return 16;
+  }
+  return WEXITSTATUS(r);
+#else
+  return outpngf(nx, ny, oary, ofn);
+#endif
 }
 
   int
@@ -207,5 +226,5 @@ main(int argc, char **argv)
     accweight(nx, ny, oary, i);
   }
   accweight(nx, ny, oary, 255);
-  return bwrite(nx, ny, oary, "zweight.out");
+  return bwrite(nx, ny, oary, "zweight.png");
 }
