@@ -8,39 +8,9 @@
 
 #define EPNGFATAL ENETDOWN
 
-struct georefimg {
-  /* --- members to hold image --- */
-  int   		img_width;
-  int   		img_height;
-  /* actual type <png_bytep *>, here <void *> is used to conseal png.h dependency. */
-  void			**img_vector;
-  /* --- members to describe map projection --- */
-//  enum projtype		img_projtype;
-  /* latitude of the first grid point */
-  double		img_ba;
-  /* latitude of the last grid point */
-  double		img_bz;
-  /* longitude of the first grid point */
-  double		img_la;
-  /* longitude of the last grid point */
-  double		img_lz;
-  /* longitude of center of projection */
-  double		img_lc;
-  double		img_cw;
-  double		img_ch;
-  double		img_sw;
-  double		img_sh;
-  /* --- pointer to chain to the next image --- */
-  struct georefimg	*img_next;
-//  enum outfilter	img_of;
-};
-
 struct outparams {
-  unsigned z;  /* zoom level */
-  unsigned xa;  /* global x index of first pixel (= 256 xfirst) */
-  unsigned xz;  /* global x index of last pixel (= 256 xlast + 255) */
-  unsigned ya;  /* global y index of first pixel (= 256 yfirst) */
-  unsigned yz;  /* global y index of last pixel (= 256 ylast + 255) */
+  unsigned width;
+  unsigned height;
   const char *filename;
 };
 
@@ -69,9 +39,7 @@ writeimg(const struct outparams *op, png_bytep *ovector)
 
   png_init_io(png, fp);
 
-  unsigned owidth = op->xz - op->xa + 1; 
-  unsigned oheight = op->yz - op->ya + 1;
-  png_set_IHDR(png, info, owidth, oheight, 8, PNG_COLOR_TYPE_RGBA,
+  png_set_IHDR(png, info, op->width, op->height, 8, PNG_COLOR_TYPE_RGBA,
     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png, info);
   png_write_image(png, ovector);
@@ -79,15 +47,5 @@ writeimg(const struct outparams *op, png_bytep *ovector)
   fclose(fp);
   
   return 0;
-}
-
-  unsigned long
-rgbint(const png_byte *pix)
-{
-  return
-    ((unsigned char)pix[0] << 16) |
-    ((unsigned char)pix[1] << 8) |
-     (unsigned char)pix[2]
-    ;
 }
 
