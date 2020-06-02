@@ -22,6 +22,7 @@ struct cfgout_t {
   unsigned ft;
   unsigned lev;
   time_t rt;
+  void *buf;
 };
 
 extern enum gribscan_err_t new_cfgout(unsigned size);
