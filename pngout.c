@@ -9,7 +9,7 @@
 #define EPNGFATAL ENETDOWN
 
   int
-writepng(unsigned width, unsigned height, png_bytep *ovector,
+outpng(unsigned width, unsigned height, png_bytep *ovector,
   const char *filename)
 {
   const int NTEXT = 1;
@@ -38,3 +38,40 @@ writepng(unsigned width, unsigned height, png_bytep *ovector,
   return 0;
 }
 
+  png_bytep *
+newpngbuf(unsigned width, unsigned height)
+{
+  png_bytep *vector;
+  png_byte *buf;
+  vector = malloc(height * sizeof(png_bytep));
+  if (vector == NULL) { return NULL; }
+  buf = malloc(width * height * 4);
+  if (buf == NULL) { free(vector); return NULL; }
+  for (int j = 0; j < height; j++) {
+    vector[j] = buf + width * 4;
+  }
+  return vector;
+}
+
+  void
+freepngbuf(png_bytep *vector)
+{
+  free(vector[0]);
+  free(vector);
+}
+
+  int
+outpngf(unsigned width, unsigned height, const float *ary,
+  const char *filename)
+{
+  png_bytep *ovector;
+  /* allocate */
+  ovector = newpngbuf(width, height);
+  /* convert */
+  for (int j = 0; j < height; j++) {
+  }
+  /* action */
+  /* free */
+  freepngbuf(ovector);
+  return 0;
+}
