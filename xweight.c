@@ -87,7 +87,7 @@ accpoint(unsigned nx, unsigned ny, float oary[], double lon, double lat)
       signed cx = ix % nx;
       double orlon = x2rlon(nx, cx);
       unsigned oofs = cx + nx * iy;
-      oary[oofs] += weight(d2fact, orlon, orlat, deg2rad(lon), deg2rad(lat));
+      oary[oofs] += weight(d2fact, orlon, orlat, deg2rad(lon), deg2rad(lat)) * 0x10000;
     }
   }
 }
