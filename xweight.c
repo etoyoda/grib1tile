@@ -173,7 +173,7 @@ accweight(unsigned nx, unsigned ny, float oary[], int igrid)
   int
 bwrite(unsigned nx, unsigned ny, float oary[], const char *ofn)
 {
-#if 1
+#if 0
   unsigned nw;
   FILE *ofp;
   char cmd[256];

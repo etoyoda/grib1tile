@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <png.h>
+#include "pngout.h"
 
 #define EPNGFATAL ENETDOWN
 
@@ -65,13 +66,30 @@ outpngf(unsigned width, unsigned height, const float *ary,
   const char *filename)
 {
   png_bytep *ovector;
+  int r;
   /* allocate */
   ovector = newpngbuf(width, height);
   /* convert */
-  for (int j = 0; j < height; j++) {
+  for (unsigned j = 0; j < height; j++) {
+    for (unsigned i = 0; i < width; i++) {
+      unsigned ofs = i + j * width;
+      if (isnan(ary[ofs])) {
+        ovector[j][i * 4]     = 0x80;
+        ovector[j][i * 4 + 1] = 0x00;
+        ovector[j][i * 4 + 2] = 0x00;
+        ovector[j][i * 4 + 3] = 0xFF;
+      } else {
+        signed long ival = ary[ofs];
+        ovector[j][i * 4]     = (ival >> 16) & 0xFF;
+        ovector[j][i * 4 + 1] = (ival >> 8) & 0xFF;
+        ovector[j][i * 4 + 2] = ival & 0xFF;
+        ovector[j][i * 4 + 3] = 0xFF;
+      }
+    }
   }
   /* action */
+  r = outpng(width, height, ovector, filename);
   /* free */
   freepngbuf(ovector);
-  return 0;
+  return r;
 }
