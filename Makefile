@@ -10,8 +10,8 @@ CC=cc
 grib1scan: $(OBJS)
 	$(CC) $(LFLAGS) -o grib1scan $(OBJS) $(LIBS)
 
-xweight: xweight.o
-	$(CC) $(LFLAGS) -o xweight xweight.o -lm
+xweight: xweight.o pngout.o
+	$(CC) $(LFLAGS) -o xweight xweight.o pngout.o -lm -lpng
 
 .c.o:
 	$(CC) -c $(CFLAGS) $<
