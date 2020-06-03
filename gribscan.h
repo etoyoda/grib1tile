@@ -1,3 +1,5 @@
+#define HAS_TIMEGM 1
+
 /* === gribscan.h === */
 
 typedef enum gribscan_err_t {
@@ -31,7 +33,7 @@ extern time_t timegm6(unsigned y, unsigned m, unsigned d,
   unsigned h, unsigned n, unsigned s);
 extern struct cfgout_t *
   check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
-  unsigned lev, time_t rt);
+  unsigned lev, struct tm *rtime, unsigned igrid);
 
 /* --- gribscan.c --- */
 

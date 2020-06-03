@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <time.h>
 #include <regex.h>
@@ -44,14 +45,27 @@ regexmsg(int e, const regex_t *re)
   time_t
 timegm6(unsigned y, unsigned m, unsigned d, unsigned h, unsigned n, unsigned s)
 {
+#if HAS_TIMEGM
+  time_t result;
+  struct tm tmbuf;
+  tmbuf.tm_year = y - 1900;
+  tmbuf.tm_mon = m - 1;
+  tmbuf.tm_mday = d;
+  tmbuf.tm_hour = h;
+  tmbuf.tm_min = n;
+  tmbuf.tm_sec = s;
+  tmbuf.tm_isdst = 0;
+  result = timegm(&tmbuf);
+  return result;
+#else
   char *tz;
   time_t result;
   struct tm tmbuf;
   tz = getenv("TZ");
   setenv("TZ", "", 1);
   tzset();
-  tmbuf.tm_year = y;
-  tmbuf.tm_mon = m;
+  tmbuf.tm_year = y - 1900;
+  tmbuf.tm_mon = m - 1;
   tmbuf.tm_mday = d;
   tmbuf.tm_hour = h;
   tmbuf.tm_min = n;
@@ -65,6 +79,7 @@ timegm6(unsigned y, unsigned m, unsigned d, unsigned h, unsigned n, unsigned s)
   }
   tzset();
   return result;
+#endif
 }
 
 /* 文字列 arg を解読し ent に保存する。 */
@@ -93,7 +108,6 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   rd = strtoul(arg + md[8].rm_so, NULL, 10);
   rh = strtoul(arg + md[9].rm_so, NULL, 10);
   ent->rt = timegm6(ry, rm, rd, rh, 0u, 0u);
-  
   return GSE_OKAY;
 }
 
@@ -117,17 +131,18 @@ store_cfgout(const char *arg)
    */
   struct cfgout_t *
 check_msg(unsigned ctr, unsigned gen, unsigned par, unsigned ft,
-  unsigned lev, time_t rt)
+  unsigned lev, struct tm *reftime, unsigned igrid)
 {
+  time_t rt;
   int i;
-  if (cfgsize == 0) {
-    struct tm tmrt;
+  if (cfgcount == 0) {
     char rts[64];
-    gmtime_r(&rt, &tmrt);
-    showtime(rts, sizeof rts, &tmrt);
-    printf("C%u G%u P%u F%u L%u R%s\n", ctr, gen, par, ft, lev, rts);
+    showtime(rts, sizeof rts, reftime);
+    printf("C%uG%uP%uF%uL%uR%.13sZ g%u\n", ctr, gen, par, ft, lev, rts,
+      igrid);
     return NULL;
   }
+  rt = timegm(reftime);
   for (i = 0; i < cfgsize; i++) {
     if (cfg[i].ctr != ctr) continue;
     if (cfg[i].gen != gen) continue;

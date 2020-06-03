@@ -362,7 +362,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   unsigned igrid, iparm;
   int ilev, ift1, ift2, d_scale;
   struct tm reftime;
-  char rtbuf[32];
+  struct cfgout_t *cfg;
   pdslen = ui3(buf + pdsofs);
   MYASSERT1((pdslen + 8 < buflen), "pdslen=%zu", pdslen);
   WEAK_ASSERT1((buf[pdsofs + 4] == 34), "origcenter=%u", buf[pdsofs + 4]);
@@ -378,9 +378,20 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   pdsreftime(&reftime, buf + pdsofs);
   pdsftime(&ift1, &ift2, buf + pdsofs);
   d_scale = si2(buf + pdsofs + 26);
+#if 0
+  {
+  char rtbuf[32];
   fprintf(stderr, "%s: g%03u p%03u v%04d r%s f%03d..%03d\n", locator,
     igrid, iparm, ilev, showtime(rtbuf, sizeof rtbuf, &reftime), ift1/60, ift2/60);
-  /* */
+  }
+#endif
+  /* checking product */
+  cfg = check_msg(buf[pdsofs+4], buf[pdsofs+5], iparm, ift2, ilev, &reftime,
+    igrid);
+  if (cfg == NULL) {
+    return GSE_OKAY;
+  }
+  /* checking gds */
   gdsofs = pdsofs + pdslen;
   MYASSERT1((gdsofs + 8 < buflen), "gdsofs=%zu", gdsofs);
   gdslen = ui3(buf + gdsofs);

@@ -24,3 +24,6 @@ clean:
 
 thinsample.json: thinsamplegen.rb
 	ruby thinsamplegen.rb > thinsample.json
+
+tags: cfgout.c gribscan.c pngout.c xweight.c gribscan.h pngout.h
+	ctags cfgout.c gribscan.c pngout.c xweight.c gribscan.h pngout.h
