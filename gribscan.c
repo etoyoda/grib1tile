@@ -285,17 +285,17 @@ parm_mnemonic(unsigned iparm)
 {
   static const char *master[65]= {
     /* 0-9 */
-    "null", "Pres", "PrMSL", "PTend", "PVort",	"IcaHt", "Gp", "Hgt", "Dist", "HStDv",
+    "null", "Pres", "PrMSL", "PTend", "PVort",  "IcaHt", "Gp", "Hgt", "Dist", "HStDv",
     /* 10-19 */
-    "TOzne", "Tmp", "VTmp", "PoT", "EPoT",	"TMax", "TMin", "DPT", "Depr", "LapR",
+    "TOzne", "Tmp", "VTmp", "PoT", "EPoT",      "TMax", "TMin", "DPT", "Depr", "LapR",
     /* 20-29 */
-    "Vis", "RdSp1", "RdSp2", "RdSp3", "PLI",	"TmpA", "PresA", "GpA", "WvSp1", "WvSp2",
+    "Vis", "RdSp1", "RdSp2", "RdSp3", "PLI",    "TmpA", "PresA", "GpA", "WvSp1", "WvSp2",
     /* 30-39 */
-    "WvSp3", "WDir", "Wind", "UGrd", "VGrd",	"Strm", "VPot", "MntSF", "SgCVV", "VVel",
+    "WvSp3", "WDir", "Wind", "UGrd", "VGrd",    "Strm", "VPot", "MntSF", "SgCVV", "VVel",
     /* 40-49 */
-    "DzDt", "AbsV", "AbsD", "RelV", "RelD",	"VUCSh", "VVCSh", "DirC", "SpC", "UOGrd",
+    "DzDt", "AbsV", "AbsD", "RelV", "RelD",     "VUCSh", "VVCSh", "DirC", "SpC", "UOGrd",
     /* 50-59 */
-    "VOGrd", "SpfH", "RH", "MixR", "PWat",	"VapP", "SatD", "Evp", "CIce", "PRate",
+    "VOGrd", "SpfH", "RH", "MixR", "PWat",      "VapP", "SatD", "Evp", "CIce", "PRate",
     /* 60-69 */
     "Tstm", "APcp", "NCPcp", "ACPcp"
   };
@@ -471,15 +471,15 @@ scandata(const char *fnam)
     case 'I':
       if (c == 'B') {
         char locator[32];
-	snprintf(locator, sizeof locator, "%-.24s:%lu",
-	  fnam + ((strlen(fnam) > 24) ? (strlen(fnam) - 24) : 0), lpos);
-	r = gdecode(fp, locator);
-	if (r != GSE_OKAY) {
-	  fprintf(stderr, "%s: GRIB1 decode %u\n", locator, r);
-	  if (r != GSE_JUSTWARN) {
-	    goto klose;
-	  }
-	}
+        snprintf(locator, sizeof locator, "%-.24s:%lu",
+          fnam + ((strlen(fnam) > 24) ? (strlen(fnam) - 24) : 0), lpos);
+        r = gdecode(fp, locator);
+        if (r != GSE_OKAY) {
+          fprintf(stderr, "%s: GRIB1 decode %u\n", locator, r);
+          if (r != GSE_JUSTWARN) {
+            goto klose;
+          }
+        }
       }
       state = 0;
       break;
