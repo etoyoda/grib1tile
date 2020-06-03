@@ -306,8 +306,6 @@ parm_mnemonic(unsigned iparm)
   }
 }
 
-#define NPTS_PLANE 26704
-
 #define WEAK_ASSERT1(test, _plusfmt, val) \
   if (!(test)) { \
     fprintf(stderr, "assert(%s) " _plusfmt "\n", #test, val); \
