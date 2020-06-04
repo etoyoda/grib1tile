@@ -315,7 +315,7 @@ parm_mnemonic(unsigned iparm)
 
   enum gribscan_err_t
 bdsdecode(const unsigned char *bds, size_t buflen, unsigned igrid, unsigned iparm,
-  int d_scale)
+  int d_scale, struct cfgout_t *cfg)
 {
   int e_scale = si2(bds + 4);
   float refval = mfloat(bds + 6);
@@ -407,7 +407,7 @@ scanmsg(unsigned char *buf, size_t buflen, const char *locator)
   MYASSERT3((bdsofs + bdslen + 4 <= buflen), "bdsofs=%zu, bdslen=%zu, buflen=%zu",
     bdsofs, bdslen, buflen);
   MYASSERT1(memcmp(buf + bdsofs + bdslen, "7777", 4) == 0, "endpos=%zu", bdsofs + bdslen);
-  r = bdsdecode(buf + bdsofs, bdslen, igrid, iparm, d_scale);
+  r = bdsdecode(buf + bdsofs, bdslen, igrid, iparm, d_scale, cfg);
   return r;
 }
 
