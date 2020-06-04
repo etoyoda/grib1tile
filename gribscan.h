@@ -17,6 +17,9 @@ typedef enum gribscan_err_t {
 
 /* --- cfgout.c --- */
 
+#define NXOUT 288
+#define NYOUT 289
+
 struct cfgout_t {
   unsigned ctr;
   unsigned gen;
@@ -24,7 +27,8 @@ struct cfgout_t {
   unsigned ft;
   unsigned lev;
   time_t rt;
-  void *buf;
+  float *acc;
+  float *wgt;
 };
 
 extern enum gribscan_err_t new_cfgout(unsigned size);

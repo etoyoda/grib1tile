@@ -108,6 +108,8 @@ parse_cfg(struct cfgout_t *ent, const char *arg)
   rd = strtoul(arg + md[8].rm_so, NULL, 10);
   rh = strtoul(arg + md[9].rm_so, NULL, 10);
   ent->rt = timegm6(ry, rm, rd, rh, 0u, 0u);
+  ent->acc = calloc(NXOUT * NYOUT * 2, sizeof(float));
+  ent->wgt = ent->acc + NXOUT * NYOUT;
   return GSE_OKAY;
 }
 
